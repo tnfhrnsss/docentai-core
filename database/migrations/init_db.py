@@ -13,6 +13,18 @@ def create_tables(conn: sqlite3.Connection):
     """
     cursor = conn.cursor()
 
+    # 0. 환경 테이블
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS da_settings (
+             id TEXT UNIQUE NOT NULL,
+             setting_value TEXT NOT NULL,
+             metadata TEXT,
+             created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
+
     # 1. 영상 메타데이터 테이블
     cursor.execute(
         """
@@ -20,6 +32,7 @@ def create_tables(conn: sqlite3.Connection):
             video_id TEXT UNIQUE NOT NULL,
             platform TEXT NOT NULL,
             title TEXT,
+            lang TEXT DEFAULT 'ko',
             metadata TEXT,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         )
@@ -148,6 +161,7 @@ def drop_tables(conn: sqlite3.Connection):
         "da_session",
         "da_videos",
         "da_record",
+        "da_settings",
     ]
 
     for table in tables:
@@ -177,6 +191,7 @@ def check_tables_exist(conn: sqlite3.Connection) -> dict:
         "da_session",
         "da_videos",
         "da_record",
+        "da_settings",
     ]
 
     results = {}

@@ -36,6 +36,7 @@ class Settings(BaseSettings):
 
     # Gemini API
     GEMINI_API_KEY: Optional[str] = None
+    GEMINI_MODEL_NAME: str = "gemini-2.0-flash-exp"
 
     # Redis (optional, for future scaling)
     REDIS_URL: Optional[str] = None
