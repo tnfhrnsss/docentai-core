@@ -41,6 +41,11 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: Optional[str] = None
     GEMINI_MODEL_NAME: str = "gemini-3-flash-20250929"
 
+    # JWT Authentication
+    JWT_SECRET_KEY: str = "your-secret-key-change-this-in-production"
+    JWT_ALGORITHM: str = "HS256"
+    JWT_EXPIRATION_DAYS: int = 7
+
     # Redis (optional, for future scaling)
     REDIS_URL: Optional[str] = None
     REDIS_ENABLED: bool = False

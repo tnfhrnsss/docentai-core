@@ -83,7 +83,7 @@ def create_tables(conn: sqlite3.Connection):
     """
     )
 
-    # 4. 이미지 메타정보 테이블 (GCS 업로드된 스크린샷)
+    # 4. 이미지 메타정보 테이블
     cursor.execute(
         """
         CREATE TABLE IF NOT EXISTS da_images (

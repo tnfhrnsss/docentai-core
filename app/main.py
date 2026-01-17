@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi import FastAPI, HTTPException, UploadFile, File, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import uuid
@@ -15,15 +15,50 @@ from app.spec.models import (
     Reference,
     ErrorResponse,
     ErrorDetail,
+    SettingUpdateRequest,
 )
 import time
 
 # Import database modules
 from database import init_db, close_db, get_db
-from database.repositories import VideoRepository, ImageRepository
+from database.repositories import (
+    VideoRepository,
+    ImageRepository,
+    SessionRepository,
+    SettingsRepository,
+)
 
 # Import settings
 from config.settings import get_settings
+
+# Import auth utilities
+from app.auth import create_access_token, get_current_session
+
+# Import Gemini client
+from app.client.gemini import get_gemini_client
+
+
+def init_prompts():
+    """Initialize prompt templates in database"""
+    db = get_db()
+    settings_repo = SettingsRepository(db.connection)
+
+    # Load explain prompt from file
+    prompt_file = Path(__file__).parent.parent / "config" / "prompts" / "explain_prompt.txt"
+
+    if prompt_file.exists():
+        with open(prompt_file, "r", encoding="utf-8") as f:
+            prompt_content = f.read()
+
+        # Upsert prompt to database
+        settings_repo.upsert(
+            setting_id="explain_prompt",
+            setting_value=prompt_content,
+            metadata={"description": "Prompt template for explanation API", "version": "1.0"},
+        )
+        print("✅ Prompt templates initialized")
+    else:
+        print("⚠️  Warning: explain_prompt.txt not found")
 
 
 @asynccontextmanager
@@ -41,6 +76,9 @@ async def lifespan(app: FastAPI):
     upload_path = Path(settings.IMAGE_UPLOAD_PATH)
     upload_path.mkdir(parents=True, exist_ok=True)
     print(f"📁 Upload directory ready: {upload_path}")
+
+    # Initialize prompts
+    init_prompts()
 
     yield
     # Shutdown: Close database connection
@@ -78,14 +116,66 @@ async def health():
     return {"status": "healthy"}
 
 
+@app.post("/api/auth/token")
+async def issue_token(x_profile_id: str = Header(..., alias="X-Profile-ID")):
+    """
+    토큰 발급 API
+
+    Issues a JWT access token based on the user's profile ID.
+    The token should be included in subsequent API requests via Authorization header.
+
+    Headers:
+    - X-Profile-ID: User's profile identifier (e.g., Netflix MDX_PROFILEID)
+
+    Response:
+    - success: Boolean indicating success
+    - token: JWT access token
+    - expiresAt: Token expiration timestamp (ISO 8601)
+    - sessionId: Unique session identifier
+    """
+    try:
+        # Create JWT token
+        token_data = create_access_token(x_profile_id)
+
+        # Save session to database
+        db = get_db()
+        session_repo = SessionRepository(db.connection)
+
+        settings = get_settings()
+        session_repo.create(
+            session_id=token_data["session_id"],
+            token=token_data["token"],
+            metadata={"profile_id": x_profile_id},
+            expires_in_hours=settings.JWT_EXPIRATION_DAYS * 24,
+        )
+
+        return {
+            "success": True,
+            "token": token_data["token"],
+            "expiresAt": token_data["expires_at"],
+            "sessionId": token_data["session_id"],
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to issue token: {str(e)}"
+        )
+
+
 @app.post("/api/upload/{video_id}")
-async def upload_image(video_id: str, image: UploadFile = File(...)):
+async def upload_image(
+    video_id: str,
+    image: UploadFile = File(...),
+    session: dict = Depends(get_current_session)
+):
     """
     이미지 업로드 API
 
     Receives an image file via FormData and saves it to the configured upload directory.
     Stores image metadata in da_images table.
     Returns a unique image ID that can be used for subsequent explanation API calls.
+
+    Authentication: Required (Bearer token)
 
     Path Parameters:
     - video_id: Video identifier to associate the image with
@@ -143,11 +233,16 @@ async def upload_image(video_id: str, image: UploadFile = File(...)):
 
 
 @app.post("/api/videos", response_model=VideoResponse, status_code=201)
-async def create_video_metadata(request: VideoCreateRequest):
+async def create_video_metadata(
+    request: VideoCreateRequest,
+    session: dict = Depends(get_current_session)
+):
     """
     영상 메타정보 저장 API
 
     Creates or updates video metadata in SQLite database.
+
+    Authentication: Required (Bearer token)
 
     Workflow:
     1. Check if video already exists
@@ -212,56 +307,198 @@ async def create_video_metadata(request: VideoCreateRequest):
 
 
 @app.post("/api/explanations", response_model=ExplainResponse)
-async def explain_subtitle(request: ExplainRequest):
+async def explain_subtitle(
+    request: ExplainRequest,
+    session: dict = Depends(get_current_session)
+):
     """
-    대사 맥락 분석 API - MVP 더미 버전
+    대사 맥락 분석 API
 
-    실제 구현 시:
-    1. Redis 캐시 확인
-    2. Vector DB에서 유사 세그먼트 검색
-    3. PostgreSQL에서 엔티티 및 참조 정보 조회
-    4. Gemini API로 설명 생성
-    5. 결과 캐싱
+    Authentication: Required (Bearer token)
+
+    Workflow:
+    1. Load prompt template from DB
+    2. Get image file and encode to base64
+    3. Get video metadata
+    4. Bind variables to prompt template
+    5. Call Gemini API for analysis
+    6. Return explanation
     """
     start_time = time.time()
 
-    dummy_explanation = Explanation(
-        text=f"'{request.selectedText}'는 {request.timestamp:.1f}초 시점의 중요한 대사입니다. "
-        f"이 부분은 등장인물 간의 관계를 이해하는 데 핵심적인 장면이에요. "
-        f"앞선 {int(request.timestamp - 120)}초 부근에서 언급된 사건과 연결되어 있습니다.",
-        sources=[
-            Source(
-                type="video_analysis",
-                title=f"{request.metadata.get('title', '영상')} 자막 분석",
-            ),
-            Source(
-                type="namuwiki",
-                title=f"{request.metadata.get('title', '작품')} 등장인물",
-                url="https://namu.wiki/w/example",
-            ),
-        ],
-        references=[
-            Reference(
-                timestamp=request.timestamp - 120,
-                description=f"{int((request.timestamp - 120) / 60)}분 {int((request.timestamp - 120) % 60)}초 - 관련 장면",
-            ),
-            Reference(
-                timestamp=request.timestamp - 300,
-                description=f"{int((request.timestamp - 300) / 60)}분 {int((request.timestamp - 300) % 60)}초 - 배경 설명",
-            ),
-        ],
-    )
+    try:
+        db = get_db()
 
-    response_time = int((time.time() - start_time) * 1000)
+        # 1. Load prompt template from DB
+        settings_repo = SettingsRepository(db.connection)
+        prompt_template = settings_repo.get_value("explain_prompt")
 
-    return ExplainResponse(
-        success=True,
-        data=ExplainResponseData(
-            explanation=dummy_explanation,
-            cached=False,
-            responseTime=response_time,
-        ),
-    )
+        if not prompt_template:
+            raise HTTPException(
+                status_code=500,
+                detail="Prompt template not found. Please check da_settings table."
+            )
+
+        # 2. Get video metadata
+        video_repo = VideoRepository(db.connection)
+        video = video_repo.get_by_video_id(request.videoId)
+
+        if not video:
+            raise HTTPException(status_code=404, detail=f"Video not found: {request.videoId}")
+
+        video_title = video.get("title", "Unknown")
+
+        # 3. Get image file path (if provided)
+        image_path = None
+        if request.imageId:
+            image_repo = ImageRepository(db.connection)
+            image = image_repo.get_by_image_id(request.imageId)
+
+            if not image:
+                raise HTTPException(status_code=404, detail=f"Image not found: {request.imageId}")
+
+            image_path = Path(image["depot_path"])
+
+            if not image_path.exists():
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Image file not found at: {image_path}"
+                )
+
+        # 4. Bind variables to prompt template
+        final_prompt = prompt_template.format(
+            video_title=video_title,
+            language=request.language,
+            subtitle_text=request.selectedText,
+        )
+
+        # 5. Call Gemini API with prompt and optional image
+        gemini_client = get_gemini_client()
+        images = [str(image_path)] if image_path else None
+        ai_response = gemini_client.generate_multimodal(
+            prompt=final_prompt,
+            images=images,
+            temperature=0.7,
+        )
+
+        # 7. Create explanation from AI response
+        explanation = Explanation(
+            text=ai_response,
+            sources=[
+                Source(
+                    type="ai_analysis",
+                    title="Gemini AI 분석",
+                ),
+                Source(
+                    type="video_context",
+                    title=f"{video_title} - {request.timestamp:.1f}초",
+                ),
+            ],
+            references=[],  # Can be populated from AI response if needed
+        )
+
+        response_time = int((time.time() - start_time) * 1000)
+
+        return ExplainResponse(
+            success=True,
+            data=ExplainResponseData(
+                explanation=explanation,
+                cached=False,
+                responseTime=response_time,
+            ),
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate explanation: {str(e)}"
+        )
+
+
+@app.get("/api/settings/{setting_id}")
+async def get_setting(setting_id: str, session: dict = Depends(get_current_session)):
+    """
+    설정 조회 API
+
+    Authentication: Required (Bearer token)
+
+    Path Parameters:
+    - setting_id: Setting identifier (e.g., 'explain_prompt')
+
+    Response:
+    - success: Boolean
+    - data: Setting record with id, value, metadata, created_at
+    """
+    try:
+        db = get_db()
+        settings_repo = SettingsRepository(db.connection)
+
+        setting = settings_repo.get_by_id(setting_id)
+
+        if not setting:
+            raise HTTPException(status_code=404, detail=f"Setting not found: {setting_id}")
+
+        return {
+            "success": True,
+            "data": setting
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get setting: {str(e)}")
+
+
+@app.put("/api/settings/{setting_id}")
+async def update_setting(
+    setting_id: str,
+    request: SettingUpdateRequest,
+    session: dict = Depends(get_current_session)
+):
+    """
+    설정 업데이트 API
+
+    Authentication: Required (Bearer token)
+
+    Path Parameters:
+    - setting_id: Setting identifier (e.g., 'explain_prompt')
+
+    Request Body:
+    - settingValue: New setting value (text)
+
+    Response:
+    - success: Boolean
+    - message: Success message
+    """
+    try:
+        db = get_db()
+        settings_repo = SettingsRepository(db.connection)
+
+        # Check if setting exists
+        if not settings_repo.exists(setting_id):
+            raise HTTPException(status_code=404, detail=f"Setting not found: {setting_id}")
+
+        # Update setting
+        updated = settings_repo.update(
+            setting_id=setting_id,
+            setting_value=request.settingValue
+        )
+
+        if not updated:
+            raise HTTPException(status_code=500, detail="Failed to update setting")
+
+        return {
+            "success": True,
+            "message": f"Setting '{setting_id}' updated successfully"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update setting: {str(e)}")
+
 
 if __name__ == "__main__":
     import uvicorn

@@ -34,8 +34,10 @@ class VideoResponse(BaseModel):
 # Explanation Models
 class ExplainRequest(BaseModel):
     videoId: str
+    imageId: Optional[str] = None  # Image ID from upload API (optional)
     selectedText: str
     timestamp: float
+    language: Optional[str] = "ko"  # Default to Korean
     metadata: Optional[dict] = None
 
 
@@ -76,3 +78,8 @@ class ErrorDetail(BaseModel):
 class ErrorResponse(BaseModel):
     success: bool
     error: ErrorDetail
+
+
+# Settings Models
+class SettingUpdateRequest(BaseModel):
+    settingValue: str
