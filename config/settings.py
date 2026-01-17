@@ -29,6 +29,9 @@ class Settings(BaseSettings):
     DATABASE_POOL_SIZE: int = 5
     DATABASE_MAX_OVERFLOW: int = 10
 
+    # Image Upload
+    IMAGE_UPLOAD_PATH: str = "./data/uploads"
+
     # Google Cloud Storage (for images)
     GCS_BUCKET_NAME: Optional[str] = None
     GCS_PROJECT_ID: Optional[str] = None
@@ -36,7 +39,7 @@ class Settings(BaseSettings):
 
     # Gemini API
     GEMINI_API_KEY: Optional[str] = None
-    GEMINI_MODEL_NAME: str = "gemini-2.0-flash-exp"
+    GEMINI_MODEL_NAME: str = "gemini-3-flash-20250929"
 
     # Redis (optional, for future scaling)
     REDIS_URL: Optional[str] = None

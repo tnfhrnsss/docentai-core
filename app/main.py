@@ -1,6 +1,8 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
+import uuid
+from pathlib import Path
 from app.spec.models import (
     VideoCreateRequest,
     VideoResponse,
@@ -18,7 +20,10 @@ import time
 
 # Import database modules
 from database import init_db, close_db, get_db
-from database.repositories import VideoRepository
+from database.repositories import VideoRepository, ImageRepository
+
+# Import settings
+from config.settings import get_settings
 
 
 @asynccontextmanager
@@ -30,6 +35,13 @@ async def lifespan(app: FastAPI):
     # Startup: Initialize database
     print("🚀 Starting Docent AI Core API...")
     init_db()
+
+    # Ensure upload directory exists
+    settings = get_settings()
+    upload_path = Path(settings.IMAGE_UPLOAD_PATH)
+    upload_path.mkdir(parents=True, exist_ok=True)
+    print(f"📁 Upload directory ready: {upload_path}")
+
     yield
     # Shutdown: Close database connection
     print("👋 Shutting down Docent AI Core API...")
@@ -66,7 +78,71 @@ async def health():
     return {"status": "healthy"}
 
 
-@app.post("/api/v1/videos", response_model=VideoResponse, status_code=201)
+@app.post("/api/upload/{video_id}")
+async def upload_image(video_id: str, image: UploadFile = File(...)):
+    """
+    이미지 업로드 API
+
+    Receives an image file via FormData and saves it to the configured upload directory.
+    Stores image metadata in da_images table.
+    Returns a unique image ID that can be used for subsequent explanation API calls.
+
+    Path Parameters:
+    - video_id: Video identifier to associate the image with
+
+    Request:
+    - image: Image file (multipart/form-data)
+
+    Response:
+    - success: Boolean indicating upload success
+    - imageId: Unique identifier for the uploaded image
+    - filename: Original filename
+    - size: File size in bytes
+    """
+    try:
+        settings = get_settings()
+        upload_path = Path(settings.IMAGE_UPLOAD_PATH)
+
+        # Verify video exists
+        db = get_db()
+        video_repo = VideoRepository(db.connection)
+        if not video_repo.exists(video_id):
+            raise HTTPException(status_code=404, detail=f"Video not found: {video_id}")
+
+        # Generate unique image ID
+        image_id = str(uuid.uuid4())
+        file_extension = Path(image.filename).suffix if image.filename else ".jpg"
+        filename = f"{image_id}{file_extension}"
+        file_path = upload_path / filename
+
+        # Save uploaded file
+        content = await image.read()
+        with open(file_path, "wb") as f:
+            f.write(content)
+
+        # Save image metadata to database
+        image_repo = ImageRepository(db.connection)
+        image_repo.create(
+            image_id=image_id,
+            video_id=video_id,
+            depot_path=str(file_path),
+            file_size=len(content),
+        )
+
+        return {
+            "success": True,
+            "imageId": image_id,
+            "filename": image.filename,
+            "size": len(content),
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
+
+
+@app.post("/api/videos", response_model=VideoResponse, status_code=201)
 async def create_video_metadata(request: VideoCreateRequest):
     """
     영상 메타정보 저장 API
@@ -86,10 +162,11 @@ async def create_video_metadata(request: VideoCreateRequest):
 
     # Prepare metadata
     metadata = {
+        "platform": request.platform,
+        "title": request.title,
+        "lang": request.lang,
         "season": request.season,
         "episode": request.episode,
-        "duration": request.duration,
-        "url": request.url,
     }
 
     try:
@@ -134,7 +211,7 @@ async def create_video_metadata(request: VideoCreateRequest):
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 
-@app.post("/api/v1/explanations", response_model=ExplainResponse)
+@app.post("/api/explanations", response_model=ExplainResponse)
 async def explain_subtitle(request: ExplainRequest):
     """
     대사 맥락 분석 API - MVP 더미 버전
@@ -185,18 +262,6 @@ async def explain_subtitle(request: ExplainRequest):
             responseTime=response_time,
         ),
     )
-
-
-# Backward compatibility - 기존 /api/explain 엔드포인트 유지 (deprecated)
-@app.post("/api/explain", response_model=ExplainResponse, deprecated=True)
-async def explain_subtitle_legacy(request: ExplainRequest):
-    """
-    자막 설명 요청 (레거시 API) - 호환성 유지를 위해 제공
-
-    **권장**: /api/v1/explanations 사용을 권장합니다.
-    """
-    return await explain_subtitle(request)
-
 
 if __name__ == "__main__":
     import uvicorn

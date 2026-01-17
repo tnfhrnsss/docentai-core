@@ -87,9 +87,9 @@ def create_tables(conn: sqlite3.Connection):
     cursor.execute(
         """
         CREATE TABLE IF NOT EXISTS da_images (
-            image_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            image_id TEXT PRIMARY KEY,
             video_id TEXT NOT NULL,
-            gcs_path TEXT NOT NULL,
+            depot_path TEXT NOT NULL,
             file_size INTEGER,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (video_id) REFERENCES da_videos(video_id) ON DELETE CASCADE
