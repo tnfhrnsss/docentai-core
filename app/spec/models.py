@@ -8,6 +8,7 @@ class VideoCreateRequest(BaseModel):
     videoId: str
     platform: str
     title: str
+    lang: Optional[str] = "en"  # Language code
     season: Optional[int] = None
     episode: Optional[int] = None
     duration: Optional[int] = None  # seconds

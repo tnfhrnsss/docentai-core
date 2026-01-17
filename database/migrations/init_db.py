@@ -32,7 +32,6 @@ def create_tables(conn: sqlite3.Connection):
             video_id TEXT UNIQUE NOT NULL,
             platform TEXT NOT NULL,
             title TEXT,
-            lang TEXT DEFAULT 'ko',
             metadata TEXT,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         )
@@ -108,11 +107,12 @@ def create_tables(conn: sqlite3.Connection):
     # 5. 요청 테이블
     cursor.execute(
         """
-        CREATE TABLE IF NOT EXISTS da_record (
-            record_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        CREATE TABLE IF NOT EXISTS da_request (
+            request_id INTEGER PRIMARY KEY AUTOINCREMENT,
             video_id TEXT NOT NULL,
             image_id TEXT,
             session_id TEXT NOT NULL,
+            lang TEXT DEFAULT 'ko',
             created_at DEFAULT CURRENT_TIMESTAMP
         )
     """
@@ -121,22 +121,22 @@ def create_tables(conn: sqlite3.Connection):
     # 인덱스 생성
     cursor.execute(
         """
-        CREATE INDEX IF NOT EXISTS idx_record_session
-        ON da_record(session_id)
+        CREATE INDEX IF NOT EXISTS idx_request_session
+        ON da_request(session_id)
     """
     )
 
     cursor.execute(
         """
-        CREATE INDEX IF NOT EXISTS idx_record_video
-        ON da_record(video_id)
+        CREATE INDEX IF NOT EXISTS idx_request_video
+        ON da_request(video_id)
     """
     )
 
     cursor.execute(
         """
-        CREATE INDEX IF NOT EXISTS idx_record_image
-            ON da_record(image_id)
+        CREATE INDEX IF NOT EXISTS idx_request_image
+        ON da_request(image_id)
         """
     )
 
@@ -160,7 +160,7 @@ def drop_tables(conn: sqlite3.Connection):
         "da_videos_reference",
         "da_session",
         "da_videos",
-        "da_record",
+        "da_request",
         "da_settings",
     ]
 
@@ -190,7 +190,7 @@ def check_tables_exist(conn: sqlite3.Connection) -> dict:
         "da_videos_reference",
         "da_session",
         "da_videos",
-        "da_record",
+        "da_request",
         "da_settings",
     ]
 
