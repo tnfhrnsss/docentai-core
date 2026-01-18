@@ -29,7 +29,7 @@ def create_tables(conn: sqlite3.Connection):
     cursor.execute(
         """
         CREATE TABLE IF NOT EXISTS da_videos (
-            video_id TEXT UNIQUE NOT NULL,
+            video_id TEXT PRIMARY KEY NOT NULL,
             platform TEXT NOT NULL,
             title TEXT,
             metadata TEXT,

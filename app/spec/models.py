@@ -11,8 +11,6 @@ class VideoCreateRequest(BaseModel):
     lang: Optional[str] = "en"  # Language code
     season: Optional[int] = None
     episode: Optional[int] = None
-    duration: Optional[int] = None  # seconds
-    url: Optional[str] = None
 
 
 class VideoData(BaseModel):
@@ -21,8 +19,6 @@ class VideoData(BaseModel):
     title: str
     season: Optional[int] = None
     episode: Optional[int] = None
-    duration: Optional[int] = None
-    url: Optional[str] = None
     createdAt: str
     updatedAt: str
 
@@ -38,14 +34,13 @@ class ExplainRequest(BaseModel):
     imageId: Optional[str] = None  # Image ID from upload API (optional)
     selectedText: str
     timestamp: float
-    language: Optional[str] = "ko"  # Default to Korean
+    language: Optional[str] = "en"  # Default to Korean
     metadata: Optional[dict] = None
 
 
 class Source(BaseModel):
     type: str
     title: str
-    url: Optional[str] = None
 
 
 class Reference(BaseModel):

@@ -77,7 +77,7 @@ class SessionRepository:
 
         cursor.execute(
             """
-            SELECT id, session_id, token, metadata, created_at, expires_at
+            SELECT session_id, token, metadata, created_at, expires_at
             FROM da_session
             WHERE session_id = ?
         """,
@@ -107,7 +107,7 @@ class SessionRepository:
 
         cursor.execute(
             """
-            SELECT id, session_id, token, metadata, created_at, expires_at
+            SELECT session_id, token, metadata, created_at, expires_at
             FROM da_session
             WHERE session_id = ? AND expires_at > ?
         """,

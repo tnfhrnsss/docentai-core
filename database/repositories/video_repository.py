@@ -74,7 +74,7 @@ class VideoRepository:
 
         cursor.execute(
             """
-            SELECT id, video_id, platform, title, metadata, created_at
+            SELECT video_id, platform, title, metadata, created_at
             FROM da_videos
             WHERE video_id = ?
         """,
@@ -88,12 +88,12 @@ class VideoRepository:
             return self._row_to_dict(row)
         return None
 
-    def get_by_id(self, record_id: int) -> Optional[Dict[str, Any]]:
+    def get_by_id(self, video_id: str) -> Optional[Dict[str, Any]]:
         """
         Get video by internal ID
 
         Args:
-            record_id: Internal record ID
+            video_id: Internal record ID
 
         Returns:
             Optional[Dict]: Video record or None if not found
@@ -102,11 +102,11 @@ class VideoRepository:
 
         cursor.execute(
             """
-            SELECT id, video_id, platform, title, metadata, created_at
+            SELECT video_id, platform, title, metadata, created_at
             FROM da_videos
-            WHERE id = ?
+            WHERE video_id = ?
         """,
-            (record_id,),
+            (video_id,),
         )
 
         row = cursor.fetchone()
@@ -229,7 +229,7 @@ class VideoRepository:
         if platform:
             cursor.execute(
                 """
-                SELECT id, video_id, platform, title, metadata, created_at
+                SELECT video_id, platform, title, metadata, created_at
                 FROM da_videos
                 WHERE platform = ?
                 ORDER BY created_at DESC
@@ -240,7 +240,7 @@ class VideoRepository:
         else:
             cursor.execute(
                 """
-                SELECT id, video_id, platform, title, metadata, created_at
+                SELECT video_id, platform, title, metadata, created_at
                 FROM da_videos
                 ORDER BY created_at DESC
                 LIMIT ? OFFSET ?

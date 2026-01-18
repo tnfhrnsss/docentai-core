@@ -58,6 +58,9 @@ class Settings(BaseSettings):
     # Logging
     LOG_LEVEL: str = "INFO"
 
+    # Environment
+    ENV: str = "development"
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

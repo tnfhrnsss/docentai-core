@@ -2,20 +2,18 @@
 Video Reference Collection Background Task
 영상 참조 정보를 비동기로 수집하여 저장하는 백그라운드 작업
 """
-import logging
 import json
+import logging
 from datetime import datetime
-from typing import Optional
 
-from database import get_db
-from database.repositories.settings_repository import SettingsRepository
-from database.repositories.reference_repository import ReferenceRepository
 from app.client.google_search import get_google_search_client
+from database import get_db
+from database.repositories.reference_repository import ReferenceRepository
 
 logger = logging.getLogger(__name__)
 
 
-def fetch_and_store_video_reference(video_id: str, title: str) -> None:
+def fetch_and_store_video_reference(video_id: str, title: str, platform: str) -> None:
     """
     영상 제목으로 참조 정보를 검색하여 da_videos_reference에 저장
 
@@ -42,15 +40,12 @@ def fetch_and_store_video_reference(video_id: str, title: str) -> None:
             logger.info(f"이미 참조 데이터가 존재합니다: video_id={video_id}, count={len(existing_refs)}")
             return
 
-        # 검색 쿼리 템플릿 가져오기
-        settings_repo = SettingsRepository(db.connection)
-        query_template = settings_repo.get_value("video_reference_search_query")
-
-        if not query_template:
-            logger.warning(
-                "검색 쿼리 템플릿이 설정되지 않았습니다. 기본 템플릿을 사용합니다."
-            )
-            query_template = "{title} 넷플릭스 줄거리 등장인물 배경"
+        # 검색 쿼리 생성 (단순화하여 검색 결과 개선)
+        # Netflix의 경우 video_id로 검색, 그 외는 제목 + 플랫폼으로 검색
+        if platform.lower() == "netflix":
+            query_template = f"{platform} {video_id}"
+        else:
+            query_template = f"{title} {platform} 줄거리"
 
         # Google Search API 클라이언트 초기화 및 검색
         try:

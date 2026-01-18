@@ -73,8 +73,6 @@ async def create_video_metadata(
             title=request.title,
             season=request.season,
             episode=request.episode,
-            duration=request.duration,
-            url=request.url,
             createdAt=current_time,
             updatedAt=updated_time,
         )
@@ -84,6 +82,7 @@ async def create_video_metadata(
             background_tasks.add_task(
                 fetch_and_store_video_reference,
                 video_id=request.videoId,
+                platform=request.platform,
                 title=request.title
             )
 
