@@ -30,7 +30,6 @@ class VideoResponse(BaseModel):
 
 # Explanation Models
 class ExplainRequest(BaseModel):
-    videoId: str
     imageId: Optional[str] = None  # Image ID from upload API (optional)
     selectedText: str
     timestamp: float

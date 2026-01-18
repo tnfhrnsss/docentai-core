@@ -9,6 +9,7 @@ from database.repositories import SettingsRepository
 
 # Import settings
 from config.settings import get_settings
+from config.logging import setup_logging
 
 # Import routers
 from app.routers import auth, videos, images, explanations, settings, statistics
@@ -43,12 +44,19 @@ async def lifespan(app: FastAPI):
     Lifespan context manager for FastAPI
     Handles startup and shutdown events
     """
-    # Startup: Initialize database
+    # Startup: Setup logging
+    settings = get_settings()
+    setup_logging(
+        log_dir="./logs",
+        log_level=settings.LOG_LEVEL,
+        app_name="docentai"
+    )
+
+    # Initialize database
     print("🚀 Starting Docent AI Core API...")
     init_db()
 
     # Ensure upload directory exists
-    settings = get_settings()
     upload_path = Path(settings.IMAGE_UPLOAD_PATH)
     upload_path.mkdir(parents=True, exist_ok=True)
     print(f"📁 Upload directory ready: {upload_path}")

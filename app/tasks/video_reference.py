@@ -40,11 +40,16 @@ def fetch_and_store_video_reference(video_id: str, title: str, platform: str) ->
             logger.info(f"이미 참조 데이터가 존재합니다: video_id={video_id}, count={len(existing_refs)}")
             return
 
-        # 검색 쿼리 생성 (단순화하여 검색 결과 개선)
-        # Netflix의 경우 video_id로 검색, 그 외는 제목 + 플랫폼으로 검색
-        if platform.lower() == "netflix":
-            query_template = f"{platform} {video_id}"
+        # 검색 쿼리 생성 (상세 정보를 얻기 위해 개선)
+        # 제목이 유효하면 제목 + 상세 정보로 검색, 없으면 video_id로 검색
+        if title and title not in ["넷플릭스", "netflix", "유튜브", "youtube"]:
+            # 유효한 제목이 있는 경우: 제목 + 줄거리/등장인물/배경
+            query_template = f"{title} 줄거리 등장인물 배경"
+        elif platform.lower() == "netflix":
+            # Netflix ID로만 검색 (제목이 없거나 유효하지 않은 경우)
+            query_template = f"{platform} {video_id} plot cast"
         else:
+            # 기타 플랫폼
             query_template = f"{title} {platform} 줄거리"
 
         # Google Search API 클라이언트 초기화 및 검색

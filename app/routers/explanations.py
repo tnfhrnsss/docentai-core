@@ -5,6 +5,7 @@ Handles AI-powered subtitle explanation
 from fastapi import APIRouter, HTTPException, Depends
 from pathlib import Path
 import time
+import logging
 
 from database import get_db
 from database.repositories import (
@@ -26,10 +27,12 @@ from app.auth import get_current_session
 from app.client.gemini import get_gemini_client
 
 router = APIRouter(prefix="/api/explanations", tags=["Explanations"])
+logger = logging.getLogger(__name__)
 
 
-@router.post("", response_model=ExplainResponse)
+@router.post("/videos/{video_id}", response_model=ExplainResponse)
 async def explain_subtitle(
+    video_id: str,
     request: ExplainRequest,
     session: dict = Depends(get_current_session)
 ):
@@ -54,7 +57,7 @@ async def explain_subtitle(
         # 0. Log request to da_request table
         request_repo = RequestRepository(db.connection)
         request_id = request_repo.create(
-            video_id=request.videoId,
+            video_id=video_id,
             session_id=session["session_id"],
             image_id=request.imageId,
             lang=request.language,
@@ -72,16 +75,16 @@ async def explain_subtitle(
 
         # 2. Get video metadata
         video_repo = VideoRepository(db.connection)
-        video = video_repo.get_by_video_id(request.videoId)
+        video = video_repo.get_by_video_id(video_id)
 
         if not video:
-            raise HTTPException(status_code=404, detail=f"Video not found: {request.videoId}")
+            raise HTTPException(status_code=404, detail=f"Video not found: {video_id}")
 
         video_title = video.get("title", "Unknown")
 
         # 2.5. Get reference data for context (if available)
         ref_repo = ReferenceRepository(db.connection)
-        reference_content = ref_repo.get_reference_content(request.videoId)
+        reference_content = ref_repo.get_reference_content(video_id)
 
         # Build reference context for prompt
         if reference_content:
@@ -158,6 +161,10 @@ async def explain_subtitle(
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(
+            f"Failed to generate explanation: video_id={video_id}, error={str(e)}",
+            exc_info=True
+        )
         raise HTTPException(
             status_code=500,
             detail=f"Failed to generate explanation: {str(e)}"

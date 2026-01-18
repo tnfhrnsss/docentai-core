@@ -39,7 +39,7 @@ class Settings(BaseSettings):
 
     # Gemini API
     GEMINI_API_KEY: Optional[str] = None
-    GEMINI_MODEL_NAME: str = "gemini-3-flash-20250929"
+    GEMINI_MODEL_NAME: str = "gemini-3-flash-preview"
 
     # Google Custom Search API (for video reference collection)
     GOOGLE_SEARCH_API_KEY: Optional[str] = None
