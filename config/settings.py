@@ -41,6 +41,11 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: Optional[str] = None
     GEMINI_MODEL_NAME: str = "gemini-3-flash-20250929"
 
+    # Google Custom Search API (for video reference collection)
+    GOOGLE_SEARCH_API_KEY: Optional[str] = None
+    GOOGLE_SEARCH_ENGINE_ID: Optional[str] = None
+    GOOGLE_SEARCH_API_URL: str = "https://www.googleapis.com/customsearch/v1"
+
     # JWT Authentication
     JWT_SECRET_KEY: str = "your-secret-key-change-this-in-production"
     JWT_ALGORITHM: str = "HS256"

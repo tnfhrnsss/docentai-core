@@ -12,6 +12,7 @@ from database.repositories import (
     ImageRepository,
     SettingsRepository,
     RequestRepository,
+    ReferenceRepository,
 )
 from app.spec.models import (
     ExplainRequest,
@@ -78,6 +79,21 @@ async def explain_subtitle(
 
         video_title = video.get("title", "Unknown")
 
+        # 2.5. Get reference data for context (if available)
+        ref_repo = ReferenceRepository(db.connection)
+        reference_content = ref_repo.get_reference_content(request.videoId)
+
+        # Build reference context for prompt
+        if reference_content:
+            reference_context = f"""
+참고 정보:
+{reference_content}
+
+위 참고 정보를 활용하여 더 정확하고 상세한 설명을 제공하세요.
+"""
+        else:
+            reference_context = ""
+
         # 3. Get image file path (if provided)
         image_path = None
         if request.imageId:
@@ -100,6 +116,7 @@ async def explain_subtitle(
             video_title=video_title,
             language=request.language,
             subtitle_text=request.selectedText,
+            reference_context=reference_context,
         )
 
         # 5. Call Gemini API with prompt and optional image

@@ -86,40 +86,6 @@ class GeminiClient:
 
         return response.text
 
-    async def generate_text_stream(
-        self,
-        prompt: str,
-        temperature: float = 0.7,
-        max_tokens: Optional[int] = None,
-    ) -> AsyncGenerator[str, None]:
-        """
-        스트리밍 방식으로 텍스트 생성
-
-        Args:
-            prompt: 입력 프롬프트
-            temperature: 생성 온도
-            max_tokens: 최대 토큰 수
-
-        Yields:
-            생성된 텍스트 청크
-        """
-        generation_config = {
-            "temperature": temperature,
-        }
-
-        if max_tokens:
-            generation_config["max_output_tokens"] = max_tokens
-
-        response = await self.model.generate_content_async(
-            prompt,
-            generation_config=generation_config,
-            stream=True,
-        )
-
-        async for chunk in response:
-            if chunk.text:
-                yield chunk.text
-
     def generate_multimodal(
         self,
         prompt: str,
@@ -161,49 +127,6 @@ class GeminiClient:
 
         return response.text
 
-    async def generate_multimodal_stream(
-        self,
-        prompt: str,
-        images: Optional[List[Union[str, bytes, Image.Image]]] = None,
-        temperature: float = 0.7,
-        max_tokens: Optional[int] = None,
-    ) -> AsyncGenerator[str, None]:
-        """
-        스트리밍 방식으로 멀티모달 입력 처리
-
-        Args:
-            prompt: 입력 프롬프트
-            images: 이미지 리스트
-            temperature: 생성 온도
-            max_tokens: 최대 토큰 수
-
-        Yields:
-            생성된 텍스트 청크
-        """
-        generation_config = {
-            "temperature": temperature,
-        }
-
-        if max_tokens:
-            generation_config["max_output_tokens"] = max_tokens
-
-        # 입력 콘텐츠 구성
-        content = [prompt]
-
-        if images:
-            for img in images:
-                pil_image = self._load_image(img)
-                content.append(pil_image)
-
-        response = await self.model.generate_content_async(
-            content,
-            generation_config=generation_config,
-            stream=True,
-        )
-
-        async for chunk in response:
-            if chunk.text:
-                yield chunk.text
 
     def chat(
         self,

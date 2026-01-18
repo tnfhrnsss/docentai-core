@@ -44,7 +44,7 @@ def create_tables(conn: sqlite3.Connection):
         CREATE TABLE IF NOT EXISTS da_videos_reference (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             video_id TEXT NOT NULL,
-            ref_url TEXT NOT NULL,
+            reference BLOB NOT NULL,
             metadata TEXT,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (video_id) REFERENCES da_videos(video_id) ON DELETE CASCADE,

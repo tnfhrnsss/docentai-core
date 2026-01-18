@@ -4,11 +4,11 @@ da_videos_reference 테이블에 대한 CRUD 작업을 담당합니다.
 """
 import json
 import sqlite3
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Union
 
 
 class ReferenceRepository:
-    """Repository for video reference operations (Namuwiki, Wikipedia, etc.)"""
+    """Repository for video reference operations (Google Search results, etc.)"""
 
     def __init__(self, conn: sqlite3.Connection):
         """
@@ -22,8 +22,7 @@ class ReferenceRepository:
     def create(
         self,
         video_id: str,
-        source: str,
-        ref_url: str,
+        reference: Union[bytes, str],
         metadata: Optional[Dict[str, Any]] = None,
     ) -> int:
         """
@@ -31,26 +30,28 @@ class ReferenceRepository:
 
         Args:
             video_id: Video identifier
-            source: Reference source (e.g., 'namuwiki', 'wikipedia')
-            ref_url: Reference URL
+            reference: Reference content (as bytes or JSON string)
             metadata: Additional metadata as dictionary
 
         Returns:
             int: Created record ID
-
-        Raises:
-            sqlite3.IntegrityError: If (video_id, source) already exists
         """
         cursor = self.conn.cursor()
+
+        # Convert reference to bytes if it's a string
+        if isinstance(reference, str):
+            reference_blob = reference.encode("utf-8")
+        else:
+            reference_blob = reference
 
         metadata_json = json.dumps(metadata) if metadata else None
 
         cursor.execute(
             """
-            INSERT INTO da_videos_reference (video_id, source, ref_url, metadata)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO da_videos_reference (video_id, reference, metadata)
+            VALUES (?, ?, ?)
         """,
-            (video_id, source, ref_url, metadata_json),
+            (video_id, reference_blob, metadata_json),
         )
 
         self.conn.commit()
@@ -59,15 +60,12 @@ class ReferenceRepository:
 
         return record_id
 
-    def get_by_video_and_source(
-        self, video_id: str, source: str
-    ) -> Optional[Dict[str, Any]]:
+    def get_by_id(self, ref_id: int) -> Optional[Dict[str, Any]]:
         """
-        Get reference by video_id and source
+        Get reference by ID
 
         Args:
-            video_id: Video identifier
-            source: Reference source
+            ref_id: Reference ID
 
         Returns:
             Optional[Dict]: Reference record or None if not found
@@ -76,11 +74,11 @@ class ReferenceRepository:
 
         cursor.execute(
             """
-            SELECT id, video_id, source, ref_url, metadata, created_at
+            SELECT id, video_id, reference, metadata, created_at
             FROM da_videos_reference
-            WHERE video_id = ? AND source = ?
+            WHERE id = ?
         """,
-            (video_id, source),
+            (ref_id,),
         )
 
         row = cursor.fetchone()
@@ -98,13 +96,13 @@ class ReferenceRepository:
             video_id: Video identifier
 
         Returns:
-            List[Dict]: List of reference records
+            List[Dict]: List of reference records with decoded reference data
         """
         cursor = self.conn.cursor()
 
         cursor.execute(
             """
-            SELECT id, video_id, source, ref_url, metadata, created_at
+            SELECT id, video_id, reference, metadata, created_at
             FROM da_videos_reference
             WHERE video_id = ?
             ORDER BY created_at DESC
@@ -117,20 +115,66 @@ class ReferenceRepository:
 
         return [self._row_to_dict(row) for row in rows]
 
+    def get_reference_content(self, video_id: str) -> Optional[str]:
+        """
+        Get all reference content for a video as formatted text for AI prompts
+
+        Args:
+            video_id: Video identifier
+
+        Returns:
+            Optional[str]: Formatted reference content or None if no references
+        """
+        refs = self.get_all_by_video(video_id)
+
+        if not refs:
+            return None
+
+        content_parts = []
+
+        for ref in refs:
+            reference_data = ref.get("reference")
+
+            if not reference_data:
+                continue
+
+            # reference_data is already decoded to dict in _row_to_dict
+            if isinstance(reference_data, dict):
+                # Format search results for AI
+                items = reference_data.get("items", [])
+                if items:
+                    content_parts.append(f"검색 쿼리: {reference_data.get('query', '')}")
+                    content_parts.append("")
+
+                    for i, item in enumerate(items, 1):
+                        title = item.get("title", "")
+                        snippet = item.get("snippet", "")
+                        url = item.get("url", "")
+
+                        content_parts.append(f"{i}. {title}")
+                        if snippet:
+                            content_parts.append(f"   {snippet}")
+                        if url:
+                            content_parts.append(f"   출처: {url}")
+                        content_parts.append("")
+
+        if not content_parts:
+            return None
+
+        return "\n".join(content_parts).strip()
+
     def update(
         self,
-        video_id: str,
-        source: str,
-        ref_url: Optional[str] = None,
+        ref_id: int,
+        reference: Optional[Union[bytes, str]] = None,
         metadata: Optional[Dict[str, Any]] = None,
     ) -> bool:
         """
         Update reference record
 
         Args:
-            video_id: Video identifier
-            source: Reference source
-            ref_url: New reference URL (if provided)
+            ref_id: Reference ID
+            reference: New reference content (if provided)
             metadata: New metadata (if provided)
 
         Returns:
@@ -142,9 +186,13 @@ class ReferenceRepository:
         updates = []
         params = []
 
-        if ref_url is not None:
-            updates.append("ref_url = ?")
-            params.append(ref_url)
+        if reference is not None:
+            if isinstance(reference, str):
+                reference_blob = reference.encode("utf-8")
+            else:
+                reference_blob = reference
+            updates.append("reference = ?")
+            params.append(reference_blob)
 
         if metadata is not None:
             updates.append("metadata = ?")
@@ -153,8 +201,8 @@ class ReferenceRepository:
         if not updates:
             return False
 
-        params.extend([video_id, source])
-        query = f"UPDATE da_videos_reference SET {', '.join(updates)} WHERE video_id = ? AND source = ?"
+        params.append(ref_id)
+        query = f"UPDATE da_videos_reference SET {', '.join(updates)} WHERE id = ?"
 
         cursor.execute(query, params)
         self.conn.commit()
@@ -164,13 +212,12 @@ class ReferenceRepository:
 
         return updated
 
-    def delete(self, video_id: str, source: str) -> bool:
+    def delete(self, ref_id: int) -> bool:
         """
         Delete reference record
 
         Args:
-            video_id: Video identifier
-            source: Reference source
+            ref_id: Reference ID
 
         Returns:
             bool: True if deleted, False if not found
@@ -180,9 +227,9 @@ class ReferenceRepository:
         cursor.execute(
             """
             DELETE FROM da_videos_reference
-            WHERE video_id = ? AND source = ?
+            WHERE id = ?
         """,
-            (video_id, source),
+            (ref_id,),
         )
 
         self.conn.commit()
@@ -224,9 +271,19 @@ class ReferenceRepository:
             row: SQLite row object
 
         Returns:
-            Dict: Row as dictionary with parsed metadata
+            Dict: Row as dictionary with decoded reference and parsed metadata
         """
         data = dict(row)
+
+        # Decode reference BLOB to dict
+        if data.get("reference"):
+            try:
+                reference_bytes = data["reference"]
+                reference_str = reference_bytes.decode("utf-8")
+                data["reference"] = json.loads(reference_str)
+            except (json.JSONDecodeError, UnicodeDecodeError) as e:
+                # If decoding fails, keep as raw bytes
+                data["reference"] = data.get("reference")
 
         # Parse metadata JSON
         if data.get("metadata"):
