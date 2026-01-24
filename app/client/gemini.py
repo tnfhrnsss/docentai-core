@@ -3,6 +3,7 @@ Gemini API Client
 Google Gemini 멀티모달 API를 호출하는 클라이언트
 """
 import os
+import logging
 from typing import Optional, List, Dict, Any, Union, AsyncGenerator
 import google.generativeai as genai
 from google.generativeai.types import GenerateContentResponse
@@ -11,6 +12,8 @@ import io
 import base64
 
 from config.settings import get_settings
+
+logger = logging.getLogger(__name__)
 
 
 class GeminiClient:
@@ -105,6 +108,9 @@ class GeminiClient:
         Returns:
             생성된 텍스트
         """
+        logger.info(f"Gemini generate_multimodal 호출 - prompt: {prompt[:200]}..." if len(prompt) > 200 else f"Gemini generate_multimodal 호출 - prompt: {prompt}")
+        logger.info(f"Gemini generate_multimodal - images count: {len(images) if images else 0}, temperature: {temperature}, max_tokens: {max_tokens}")
+
         generation_config = {
             "temperature": temperature,
         }
@@ -125,6 +131,7 @@ class GeminiClient:
             generation_config=generation_config,
         )
 
+        logger.info(f"Gemini generate_multimodal 응답 완료 - response length: {len(response.text)}")
         return response.text
 
 

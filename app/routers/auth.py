@@ -2,22 +2,29 @@
 Authentication Router
 Handles token issuance and authentication
 """
-from fastapi import APIRouter, HTTPException, Header
+from fastapi import APIRouter, HTTPException, Header, Request
 from database import get_db
 from database.repositories import SessionRepository
 from config.settings import get_settings
 from app.auth import create_access_token
+from app.utils import get_client_ip
+import logging
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
+logger = logging.getLogger(__name__)
 
 
 @router.post("/token")
-async def issue_token(x_profile_id: str = Header(..., alias="X-Profile-ID")):
+async def issue_token(
+    request: Request,
+    x_profile_id: str = Header(..., alias="X-Profile-ID")
+):
     """
-    토큰 발급 API
+    토큰 발급/재사용 API
 
-    Issues a JWT access token based on the user's profile ID.
-    The token should be included in subsequent API requests via Authorization header.
+    Issues or reuses a JWT access token based on the user's profile ID.
+    If a valid (non-expired) token exists for the profile, it will be reused.
+    Otherwise, a new token will be issued.
 
     Headers:
     - X-Profile-ID: User's profile identifier (e.g., Netflix MDX_PROFILEID)
@@ -27,21 +34,74 @@ async def issue_token(x_profile_id: str = Header(..., alias="X-Profile-ID")):
     - token: JWT access token
     - expiresAt: Token expiration timestamp (ISO 8601)
     - sessionId: Unique session identifier
+    - reused: Boolean indicating if token was reused (true) or newly issued (false)
     """
     try:
-        # Create JWT token
-        token_data = create_access_token(x_profile_id)
+        # Get client IP
+        client_ip = get_client_ip(request)
 
-        # Save session to database
         db = get_db()
         session_repo = SessionRepository(db.connection)
-
         settings = get_settings()
+
+        # Check if valid session exists for this profile_id
+        existing_session = session_repo.get_valid_session_by_profile_id(x_profile_id)
+
+        if existing_session:
+            # Reuse existing token and extend expiration
+            session_id = existing_session["session_id"]
+
+            # IP 변경 감지 (모니터링 목적)
+            existing_metadata = existing_session.get("metadata", {})
+            original_ip = existing_metadata.get("client_ip", "unknown")
+
+            if original_ip != "unknown" and original_ip != client_ip:
+                # IP가 변경되었음을 WARNING 로그로 기록
+                logger.warning(
+                    f"IP changed for session: profile_id={x_profile_id}, "
+                    f"session_id={session_id}, "
+                    f"original_ip={original_ip}, "
+                    f"current_ip={client_ip}"
+                )
+
+            session_repo.extend_expiration(
+                session_id, extend_hours=settings.JWT_EXPIRATION_DAYS * 24
+            )
+
+            # Get updated session
+            updated_session = session_repo.get_by_session_id(session_id)
+
+            # Log token reuse
+            logger.info(
+                f"Token reused: profile_id={x_profile_id}, "
+                f"session_id={session_id}, client_ip={client_ip}"
+            )
+
+            return {
+                "success": True,
+                "token": updated_session["token"],
+                "expiresAt": updated_session["expires_at"],
+                "sessionId": updated_session["session_id"],
+                "reused": True,
+            }
+
+        # No valid session found - create new token
+        token_data = create_access_token(x_profile_id)
+
         session_repo.create(
             session_id=token_data["session_id"],
             token=token_data["token"],
-            metadata={"profile_id": x_profile_id},
+            metadata={
+                "profile_id": x_profile_id,
+                "client_ip": client_ip,
+            },
             expires_in_hours=settings.JWT_EXPIRATION_DAYS * 24,
+        )
+
+        # Log new token issuance
+        logger.info(
+            f"New token issued: profile_id={x_profile_id}, "
+            f"session_id={token_data['session_id']}, client_ip={client_ip}"
         )
 
         return {
@@ -49,6 +109,7 @@ async def issue_token(x_profile_id: str = Header(..., alias="X-Profile-ID")):
             "token": token_data["token"],
             "expiresAt": token_data["expires_at"],
             "sessionId": token_data["session_id"],
+            "reused": False,
         }
 
     except Exception as e:

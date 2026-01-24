@@ -251,6 +251,41 @@ class SessionRepository:
 
         return count
 
+    def get_valid_session_by_profile_id(
+        self, profile_id: str
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Get valid session by profile_id from metadata
+
+        Args:
+            profile_id: User's profile identifier
+
+        Returns:
+            Optional[Dict]: Valid session record or None if not found/expired
+        """
+        cursor = self.conn.cursor()
+
+        current_time = datetime.utcnow().isoformat() + "Z"
+
+        cursor.execute(
+            """
+            SELECT session_id, token, metadata, created_at, expires_at
+            FROM da_session
+            WHERE json_extract(metadata, '$.profile_id') = ?
+            AND expires_at > ?
+            ORDER BY created_at DESC
+            LIMIT 1
+        """,
+            (profile_id, current_time),
+        )
+
+        row = cursor.fetchone()
+        cursor.close()
+
+        if row:
+            return self._row_to_dict(row)
+        return None
+
     def _row_to_dict(self, row: sqlite3.Row) -> Dict[str, Any]:
         """
         Convert SQLite row to dictionary

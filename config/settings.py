@@ -45,6 +45,7 @@ class Settings(BaseSettings):
     GOOGLE_SEARCH_API_KEY: Optional[str] = None
     GOOGLE_SEARCH_ENGINE_ID: Optional[str] = None
     GOOGLE_SEARCH_API_URL: str = "https://www.googleapis.com/customsearch/v1"
+    GOOGLE_SEARCH_NUM_RESULTS: int = 1  # 검색 결과 개수 (기본값: 1 = 가장 정확도 높은 것만)
 
     # JWT Authentication
     JWT_SECRET_KEY: str = "your-secret-key-change-this-in-production"

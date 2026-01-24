@@ -11,6 +11,7 @@ class VideoCreateRequest(BaseModel):
     lang: Optional[str] = "en"  # Language code
     season: Optional[int] = None
     episode: Optional[int] = None
+    duration: Optional[int] = None
 
 
 class VideoData(BaseModel):
@@ -29,12 +30,30 @@ class VideoResponse(BaseModel):
 
 
 # Explanation Models
+class SubtitleContext(BaseModel):
+    text: str
+    timestamp: float
+    nonVerbalCues: Optional[List[str]] = []  # 비언어적 표현 (효과음, 배경음악 등)
+
+
+class CurrentSubtitle(BaseModel):
+    text: str
+    timestamp: float
+    nonVerbalCues: Optional[List[str]] = []  # 비언어적 표현 (효과음, 배경음악 등)
+
+
 class ExplainRequest(BaseModel):
     imageId: Optional[str] = None  # Image ID from upload API (optional)
     selectedText: str
     timestamp: float
     language: Optional[str] = "en"  # Default to Korean
     metadata: Optional[dict] = None
+
+    # 이전 자막들 (문맥 - 최대 N개, 프론트 설정값에 따라 가변)
+    context: Optional[List[SubtitleContext]] = []
+
+    # 현재 설명을 요청하는 자막
+    currentSubtitle: Optional[CurrentSubtitle] = None
 
 
 class Source(BaseModel):

@@ -12,7 +12,10 @@ from config.settings import get_settings
 from config.logging import setup_logging
 
 # Import routers
-from app.routers import auth, videos, images, explanations, settings, statistics
+from app.routers import auth, videos, images, explanations, settings, statistics, debug
+
+# Import middleware
+from app.middleware import RequestLoggingMiddleware
 
 
 def init_prompts():
@@ -85,6 +88,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Add request logging middleware (logs body in DEBUG mode)
+app.add_middleware(RequestLoggingMiddleware)
+
 
 # Root endpoints
 @app.get("/")
@@ -108,6 +114,7 @@ app.include_router(images.router)
 app.include_router(explanations.router)
 app.include_router(settings.router)
 app.include_router(statistics.router)
+app.include_router(debug.router)
 
 
 if __name__ == "__main__":

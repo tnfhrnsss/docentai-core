@@ -54,14 +54,18 @@ class GoogleSearchClient:
     def search_video_info(
         self,
         query: str,
-        num_results: int = 5,
+        num_results: Optional[int] = None,
+        site_search: Optional[str] = None,
+        site_search_filter: str = "i",
     ) -> Dict[str, Any]:
         """
         영상 관련 정보 검색
 
         Args:
             query: 검색 쿼리 (예: "카고 넷플릭스 줄거리 등장인물 배경")
-            num_results: 반환할 결과 개수 (최대 10)
+            num_results: 반환할 결과 개수 (기본값: 설정값 사용, 최대 10)
+            site_search: 특정 사이트로 검색 제한 (예: "namu.wiki")
+            site_search_filter: "i" (포함) 또는 "e" (제외)
 
         Returns:
             검색 결과 딕셔너리
@@ -82,6 +86,11 @@ class GoogleSearchClient:
             Exception: API 호출 실패 시
         """
         try:
+            # num_results가 지정되지 않으면 설정값 사용
+            if num_results is None:
+                settings = get_settings()
+                num_results = settings.GOOGLE_SEARCH_NUM_RESULTS
+
             # URL 파라미터 구성
             params = {
                 "key": self.api_key,
@@ -89,6 +98,11 @@ class GoogleSearchClient:
                 "q": query,
                 "num": min(num_results, 10),  # 최대 10개
             }
+
+            # 특정 사이트 검색 제한
+            if site_search:
+                params["siteSearch"] = site_search
+                params["siteSearchFilter"] = site_search_filter
 
             # URL 생성
             url = f"{self.api_url}?{urllib.parse.urlencode(params)}"
@@ -118,6 +132,8 @@ class GoogleSearchClient:
             }
 
             logger.info(f"검색 완료: {len(items)}개 결과 반환")
+            logger.info(f"검색어: {query}")
+            logger.info(f"검색 결과: {json.dumps(result, ensure_ascii=False, indent=2)}")
             return result
 
         except urllib.error.HTTPError as e:
@@ -140,8 +156,9 @@ class GoogleSearchClient:
     def search_video_by_title(
         self,
         title: str,
-        query_template: str = "{title} 넷플릭스 줄거리 등장인물 배경",
-        num_results: int = 5,
+        query_template: str = "{title}",
+        num_results: Optional[int] = None,
+        site_search: Optional[str] = "",
     ) -> Dict[str, Any]:
         """
         영상 제목으로 관련 정보 검색
@@ -149,13 +166,14 @@ class GoogleSearchClient:
         Args:
             title: 영상 제목
             query_template: 검색 쿼리 템플릿 ({title} 자리표시자 사용)
-            num_results: 반환할 결과 개수
+            num_results: 반환할 결과 개수 (기본값: 설정값 사용)
+            site_search: 특정 사이트로 검색 제한 (기본값: "namu.wiki")
 
         Returns:
             검색 결과 딕셔너리
         """
         query = query_template.format(title=title)
-        return self.search_video_info(query, num_results)
+        return self.search_video_info(query, num_results, site_search=site_search)
 
 
 # 싱글톤 인스턴스 생성 헬퍼

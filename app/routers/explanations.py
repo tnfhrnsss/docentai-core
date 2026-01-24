@@ -25,6 +25,7 @@ from app.spec.models import (
 )
 from app.auth import get_current_session
 from app.client.gemini import get_gemini_client
+from config.settings import get_settings
 
 router = APIRouter(prefix="/api/explanations", tags=["Explanations"])
 logger = logging.getLogger(__name__)
@@ -50,6 +51,11 @@ async def explain_subtitle(
     6. Return explanation
     """
     start_time = time.time()
+
+    # DEBUG 모드일 때 request body 로깅
+    settings = get_settings()
+    if settings.DEBUG or settings.LOG_LEVEL == "DEBUG":
+        logger.debug(f"Explanation request body: {request.dict()}")
 
     try:
         db = get_db()
@@ -82,9 +88,26 @@ async def explain_subtitle(
 
         video_title = video.get("title", "Unknown")
 
+        # Extract non-null metadata fields
+        video_metadata = video.get("metadata", {}) or {}
+        metadata_context = ""
+        if video_metadata:
+            metadata_lines = []
+            for key, value in video_metadata.items():
+                if value is not None and value != "":
+                    metadata_lines.append(f"- {key}: {value}")
+
+            if metadata_lines:
+                metadata_context = "\n".join(metadata_lines)
+
+        logger.info(f"Video metadata: {video_metadata}")
+        logger.info(f"Metadata context: {metadata_context}")
+
         # 2.5. Get reference data for context (if available)
         ref_repo = ReferenceRepository(db.connection)
-        reference_content = ref_repo.get_reference_content(video_id)
+        reference_content = ''#ref_repo.get_reference_content(video_id)
+
+        logger.info(f"Reference content: {reference_content}")
 
         # Build reference context for prompt
         if reference_content:
@@ -114,12 +137,44 @@ async def explain_subtitle(
                     detail=f"Image file not found at: {image_path}"
                 )
 
-        # 4. Bind variables to prompt template
+        # 4. Build context subtitles string (이전 자막 문맥)
+        # 빈 값이면 섹션 자체를 제거하여 토큰 절약
+        context_subtitles = ""
+        if request.context and len(request.context) > 0:
+            context_lines = ["## 이전 자막"]
+            for ctx in request.context:
+                # 비언어적 표현이 있으면 표시
+                non_verbal = ""
+                if ctx.nonVerbalCues and len(ctx.nonVerbalCues) > 0:
+                    non_verbal = f" [{', '.join(ctx.nonVerbalCues)}]"
+
+                context_lines.append(
+                    f"[{ctx.timestamp:.1f}초] {ctx.text}{non_verbal}"
+                )
+
+            context_subtitles = "\n".join(context_lines)
+
+        logger.info(f"Context subtitles ({len(request.context) if request.context else 0} items)")
+
+        # 5. Build non-verbal cues string (현재 자막의 비언어적 표현)
+        # 빈 값이면 섹션 자체를 제거하여 토큰 절약
+        non_verbal_cues = ""
+        if request.currentSubtitle and request.currentSubtitle.nonVerbalCues:
+            if len(request.currentSubtitle.nonVerbalCues) > 0:
+                cues_str = ", ".join(request.currentSubtitle.nonVerbalCues)
+                non_verbal_cues = f"## 비언어적 표현\n{cues_str}"
+
+        logger.info(f"Non-verbal cues: {non_verbal_cues if non_verbal_cues else 'None'}")
+
+        # 6. Bind variables to prompt template
         final_prompt = prompt_template.format(
             video_title=video_title,
             language=request.language,
             subtitle_text=request.selectedText,
+            metadata_context=metadata_context,
             reference_context=reference_context,
+            context_subtitles=context_subtitles,
+            non_verbal_cues=non_verbal_cues,
         )
 
         # 5. Call Gemini API with prompt and optional image

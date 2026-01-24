@@ -44,10 +44,10 @@ def fetch_and_store_video_reference(video_id: str, title: str, platform: str) ->
         # 제목이 유효하면 제목 + 상세 정보로 검색, 없으면 video_id로 검색
         if title and title not in ["넷플릭스", "netflix", "유튜브", "youtube"]:
             # 유효한 제목이 있는 경우: 제목 + 줄거리/등장인물/배경
-            query_template = f"{title} 줄거리 등장인물 배경"
+            query_template = f"{platform} {title} 줄거리"
         elif platform.lower() == "netflix":
             # Netflix ID로만 검색 (제목이 없거나 유효하지 않은 경우)
-            query_template = f"{platform} {video_id} plot cast"
+            query_template = f"{platform} {video_id} plot"
         else:
             # 기타 플랫폼
             query_template = f"{title} {platform} 줄거리"
@@ -55,10 +55,10 @@ def fetch_and_store_video_reference(video_id: str, title: str, platform: str) ->
         # Google Search API 클라이언트 초기화 및 검색
         try:
             search_client = get_google_search_client()
+            # num_results를 지정하지 않으면 설정값 사용 (기본값: 1개 = 가장 정확도 높은 것만)
             search_results = search_client.search_video_by_title(
                 title=title,
                 query_template=query_template,
-                num_results=5,
             )
 
             logger.info(

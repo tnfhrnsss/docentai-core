@@ -43,6 +43,7 @@ async def create_video_metadata(
         "lang": request.lang,
         "season": request.season,
         "episode": request.episode,
+        "duration": request.duration,
     }
 
     try:
@@ -78,13 +79,13 @@ async def create_video_metadata(
         )
 
         # Trigger background task to fetch and store reference data
-        if request.title:
-            background_tasks.add_task(
-                fetch_and_store_video_reference,
-                video_id=request.videoId,
-                platform=request.platform,
-                title=request.title
-            )
+        # if request.title:
+        #     background_tasks.add_task(
+        #         fetch_and_store_video_reference,
+        #         video_id=request.videoId,
+        #         platform=request.platform,
+        #         title=request.title
+        #     )
 
         return VideoResponse(success=True, data=video_data)
 
