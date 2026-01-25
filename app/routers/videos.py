@@ -2,15 +2,15 @@
 Videos Router
 Handles video metadata operations
 """
-from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
-from datetime import datetime
 import sqlite3
+from datetime import datetime
 
+from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
+
+from app.auth import get_current_session
+from app.spec.models import VideoCreateRequest, VideoResponse, VideoData
 from database import get_db
 from database.repositories import VideoRepository
-from app.spec.models import VideoCreateRequest, VideoResponse, VideoData
-from app.auth import get_current_session
-from app.tasks import fetch_and_store_video_reference
 
 router = APIRouter(prefix="/api/videos", tags=["Videos"])
 
@@ -77,15 +77,6 @@ async def create_video_metadata(
             createdAt=current_time,
             updatedAt=updated_time,
         )
-
-        # Trigger background task to fetch and store reference data
-        # if request.title:
-        #     background_tasks.add_task(
-        #         fetch_and_store_video_reference,
-        #         video_id=request.videoId,
-        #         platform=request.platform,
-        #         title=request.title
-        #     )
 
         return VideoResponse(success=True, data=video_data)
 

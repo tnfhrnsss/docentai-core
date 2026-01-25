@@ -2,30 +2,29 @@
 Explanations Router
 Handles AI-powered subtitle explanation
 """
-from fastapi import APIRouter, HTTPException, Depends
-from pathlib import Path
-import time
 import logging
+import time
+from pathlib import Path
 
-from database import get_db
-from database.repositories import (
-    VideoRepository,
-    ImageRepository,
-    SettingsRepository,
-    RequestRepository,
-    ReferenceRepository,
-)
+from fastapi import APIRouter, HTTPException, Depends
+
+from app.auth import get_current_session
+from app.client.gemini import get_gemini_client
 from app.spec.models import (
     ExplainRequest,
     ExplainResponse,
     ExplainResponseData,
     Explanation,
     Source,
-    Reference,
 )
-from app.auth import get_current_session
-from app.client.gemini import get_gemini_client
 from config.settings import get_settings
+from database import get_db
+from database.repositories import (
+    VideoRepository,
+    ImageRepository,
+    SettingsRepository,
+    RequestRepository,
+)
 
 router = APIRouter(prefix="/api/explanations", tags=["Explanations"])
 logger = logging.getLogger(__name__)
@@ -104,21 +103,7 @@ async def explain_subtitle(
         logger.info(f"Metadata context: {metadata_context}")
 
         # 2.5. Get reference data for context (if available)
-        ref_repo = ReferenceRepository(db.connection)
-        reference_content = ''#ref_repo.get_reference_content(video_id)
-
-        logger.info(f"Reference content: {reference_content}")
-
-        # Build reference context for prompt
-        if reference_content:
-            reference_context = f"""
-참고 정보:
-{reference_content}
-
-위 참고 정보를 활용하여 더 정확하고 상세한 설명을 제공하세요.
-"""
-        else:
-            reference_context = ""
+        reference_context = ""
 
         # 3. Get image file path (if provided)
         image_path = None

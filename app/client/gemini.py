@@ -87,7 +87,21 @@ class GeminiClient:
             generation_config=generation_config,
         )
 
-        return response.text
+        # 텍스트 추출
+        try:
+            return response.text
+        except ValueError as e:
+            logger.warning(f"Multi-part response in generate_text: {e}")
+            # parts에서 텍스트 추출
+            text_parts = []
+            for candidate in response.candidates:
+                for part in candidate.content.parts:
+                    if hasattr(part, 'text') and part.text:
+                        text_parts.append(part.text)
+            result = ''.join(text_parts)
+            if not result:
+                raise ValueError("응답에서 텍스트를 추출할 수 없습니다")
+            return result
 
     def generate_multimodal(
         self,
@@ -131,8 +145,34 @@ class GeminiClient:
             generation_config=generation_config,
         )
 
-        logger.info(f"Gemini generate_multimodal 응답 완료 - response length: {len(response.text)}")
-        return response.text
+        # 응답 구조 디버깅
+        logger.info(f"Gemini response candidates count: {len(response.candidates)}")
+        for idx, candidate in enumerate(response.candidates):
+            logger.info(f"Candidate {idx} parts count: {len(candidate.content.parts)}")
+            for part_idx, part in enumerate(candidate.content.parts):
+                part_type = type(part).__name__
+                has_text = hasattr(part, 'text')
+                logger.info(f"  Part {part_idx}: type={part_type}, has_text={has_text}")
+                if has_text:
+                    text_preview = part.text[:100] if len(part.text) > 100 else part.text
+                    logger.info(f"    Text preview: {text_preview}")
+
+        # 텍스트 추출
+        try:
+            result_text = response.text
+            logger.info(f"Gemini generate_multimodal 응답 완료 (simple text) - length: {len(result_text)}")
+        except ValueError as e:
+            logger.warning(f"Multi-part response detected: {e}")
+            # parts에서 텍스트 추출
+            text_parts = []
+            for candidate in response.candidates:
+                for part in candidate.content.parts:
+                    if hasattr(part, 'text') and part.text:
+                        text_parts.append(part.text)
+            result_text = ''.join(text_parts)
+            logger.info(f"Gemini generate_multimodal 응답 완료 (multi-part) - length: {len(result_text)}")
+
+        return result_text
 
 
     def chat(
@@ -159,7 +199,21 @@ class GeminiClient:
             generation_config={"temperature": temperature},
         )
 
-        return response.text, chat.history
+        # 텍스트 추출
+        try:
+            result_text = response.text
+        except ValueError as e:
+            logger.warning(f"Multi-part response in chat: {e}")
+            text_parts = []
+            for candidate in response.candidates:
+                for part in candidate.content.parts:
+                    if hasattr(part, 'text') and part.text:
+                        text_parts.append(part.text)
+            result_text = ''.join(text_parts)
+            if not result_text:
+                raise ValueError("응답에서 텍스트를 추출할 수 없습니다")
+
+        return result_text, chat.history
 
     def _load_image(
         self,
