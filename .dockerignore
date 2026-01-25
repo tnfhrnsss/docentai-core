@@ -30,7 +30,7 @@ env/
 .claude/
 
 # Testing
-tests/
+test/
 test_*.py
 *_test.py
 .pytest_cache/
@@ -51,6 +51,7 @@ data/
 # Environment files
 .env
 .env.*
+!.env.docker
 !.env.example
 
 # macOS

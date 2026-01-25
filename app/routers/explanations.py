@@ -43,11 +43,15 @@ async def explain_subtitle(
 
     Workflow:
     1. Load prompt template from DB
-    2. Get image file and encode to base64
-    3. Get video metadata
-    4. Bind variables to prompt template
-    5. Call Gemini API for analysis
-    6. Return explanation
+    2. Get or create video metadata (priority: DB title > request body title)
+    3. Get reference data for context
+    4. Get image file (if provided)
+    5. Build context subtitles string
+    6. Build non-verbal cues string
+    7. Validate title (required for AI call)
+    8. Bind variables to prompt template
+    9. Call Gemini API for analysis
+    10. Return explanation
     """
     start_time = time.time()
 
@@ -78,17 +82,38 @@ async def explain_subtitle(
                 detail="Prompt template not found. Please check da_settings table."
             )
 
-        # 2. Get video metadata
+        # 2. Get or create video metadata
         video_repo = VideoRepository(db.connection)
         video = video_repo.get_by_video_id(video_id)
 
-        if not video:
-            raise HTTPException(status_code=404, detail=f"Video not found: {video_id}")
+        # Determine title with priority: DB title > request body title > error
+        if video:
+            # Video exists - use DB data
+            video_title = video.get("title") or request.title
+            video_platform = video.get("platform", "unknown")
+            video_metadata = video.get("metadata", {}) or {}
+        else:
+            # Video doesn't exist - use request body data
+            video_title = request.title
+            video_platform = request.platform or "unknown"
+            video_metadata = request.metadata or {}
 
-        video_title = video.get("title", "Unknown")
+            # Create video in background if we have title
+            if video_title and video_title.strip():
+                try:
+                    logger.info(f"Video not found, creating new video: {video_id}")
+                    video_repo.create(
+                        video_id=video_id,
+                        platform=video_platform,
+                        title=video_title,
+                        metadata=request.metadata,
+                    )
+                    logger.info(f"Created new video: {video_id}")
+                except Exception as create_error:
+                    # Log error but don't fail the request
+                    logger.error(f"Failed to create video {video_id}: {create_error}")
 
         # Extract non-null metadata fields
-        video_metadata = video.get("metadata", {}) or {}
         metadata_context = ""
         if video_metadata:
             metadata_lines = []
@@ -102,10 +127,10 @@ async def explain_subtitle(
         logger.info(f"Video metadata: {video_metadata}")
         logger.info(f"Metadata context: {metadata_context}")
 
-        # 2.5. Get reference data for context (if available)
+        # 3. Get reference data for context (if available)
         reference_context = ""
 
-        # 3. Get image file path (if provided)
+        # 4. Get image file path (if provided)
         image_path = None
         if request.imageId:
             image_repo = ImageRepository(db.connection)
@@ -122,7 +147,7 @@ async def explain_subtitle(
                     detail=f"Image file not found at: {image_path}"
                 )
 
-        # 4. Build context subtitles string (이전 자막 문맥)
+        # 5. Build context subtitles string (이전 자막 문맥)
         # 빈 값이면 섹션 자체를 제거하여 토큰 절약
         context_subtitles = ""
         if request.context and len(request.context) > 0:
@@ -141,7 +166,7 @@ async def explain_subtitle(
 
         logger.info(f"Context subtitles ({len(request.context) if request.context else 0} items)")
 
-        # 5. Build non-verbal cues string (현재 자막의 비언어적 표현)
+        # 6. Build non-verbal cues string (현재 자막의 비언어적 표현)
         # 빈 값이면 섹션 자체를 제거하여 토큰 절약
         non_verbal_cues = ""
         if request.currentSubtitle and request.currentSubtitle.nonVerbalCues:
@@ -151,7 +176,14 @@ async def explain_subtitle(
 
         logger.info(f"Non-verbal cues: {non_verbal_cues if non_verbal_cues else 'None'}")
 
-        # 6. Bind variables to prompt template
+        # 7. Validate title before AI call (required for prompt)
+        if not video_title or not video_title.strip():
+            raise HTTPException(
+                status_code=400,
+                detail="Video title is required. Please provide title in request body or ensure video exists in database."
+            )
+
+        # 8. Bind variables to prompt template
         final_prompt = prompt_template.format(
             video_title=video_title,
             language=request.language,
@@ -162,7 +194,7 @@ async def explain_subtitle(
             non_verbal_cues=non_verbal_cues,
         )
 
-        # 5. Call Gemini API with prompt and optional image
+        # 9. Call Gemini API with prompt and optional image
         gemini_client = get_gemini_client()
         images = [str(image_path)] if image_path else None
         ai_response = gemini_client.generate_multimodal(
@@ -171,7 +203,7 @@ async def explain_subtitle(
             temperature=0.7,
         )
 
-        # 7. Create explanation from AI response
+        # 10. Create explanation from AI response
         explanation = Explanation(
             text=ai_response,
             sources=[

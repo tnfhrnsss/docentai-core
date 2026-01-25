@@ -49,6 +49,10 @@ class ExplainRequest(BaseModel):
     language: Optional[str] = "en"  # Default to Korean
     metadata: Optional[dict] = None
 
+    # Video 정보 (선택 - video 테이블에 없을 때 사용)
+    title: Optional[str] = None  # Video title (fallback if not in DB)
+    platform: Optional[str] = None  # Platform name (optional, e.g., 'netflix', 'youtube')
+
     # 이전 자막들 (문맥 - 최대 N개, 프론트 설정값에 따라 가변)
     context: Optional[List[SubtitleContext]] = []
 

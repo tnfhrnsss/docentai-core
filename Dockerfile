@@ -35,8 +35,14 @@ ENV PATH="/opt/venv/bin:$PATH"
 # Cloud Run sets PORT environment variable
 ENV PORT=8080
 
+# Create necessary directories and set up environment
+RUN mkdir -p /app/data /app/data/uploads /app/logs && \
+    # Use Docker-specific .env file if exists, otherwise use default
+    if [ -f .env.docker ]; then cp .env.docker .env; fi
+
 # Run as non-root user for security
-RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app /opt/venv
+RUN useradd -m -u 1000 appuser && \
+    chown -R appuser:appuser /app /opt/venv
 USER appuser
 
 # Expose port (Cloud Run will use $PORT)
