@@ -40,6 +40,8 @@ class Settings(BaseSettings):
     # Gemini API
     GEMINI_API_KEY: Optional[str] = None
     GEMINI_MODEL_NAME: str = "gemini-3-flash-preview"
+    GEMINI_TIMEOUT_SECONDS: int = 50  # API 호출 timeout (초)
+    GEMINI_CONNECTION_TIMEOUT_SECONDS: int = 10  # 연결 timeout (초)
 
     # Google Custom Search API (for video reference collection)
     GOOGLE_SEARCH_API_KEY: Optional[str] = None

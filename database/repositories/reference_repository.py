@@ -143,8 +143,8 @@ class ReferenceRepository:
                 # Format search results for AI
                 items = reference_data.get("items", [])
                 if items:
-                    content_parts.append(f"검색 쿼리: {reference_data.get('query', '')}")
-                    content_parts.append("")
+                    #content_parts.append(f"검색 쿼리: {reference_data.get('query', '')}")
+                    content_parts.append("please refer to this info. ")
 
                     for i, item in enumerate(items, 1):
                         title = item.get("title", "")

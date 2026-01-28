@@ -20,5 +20,6 @@ Succinctly describe the above subtitle in {language} (maximum 3 sentences):
 1. What this line means
 2. Character relationships or plot significance
 3. Cultural/linguistic nuances (if any)
+4. Without any spoilers.
 
 Refer to the screenshot image (if provided), nonverbal expressions, and previous subtitles to determine context.

@@ -7,6 +7,7 @@ import time
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Depends
+from google.api_core import exceptions as google_exceptions
 
 from app.auth import get_current_session
 from app.client.gemini import get_gemini_client
@@ -16,6 +17,7 @@ from app.spec.models import (
     ExplainResponseData,
     Explanation,
     Source,
+    Reference,
 )
 from config.settings import get_settings
 from database import get_db
@@ -24,6 +26,7 @@ from database.repositories import (
     ImageRepository,
     SettingsRepository,
     RequestRepository,
+    ReferenceRepository,
 )
 
 router = APIRouter(prefix="/api/explanations", tags=["Explanations"])
@@ -128,7 +131,21 @@ async def explain_subtitle(
         logger.info(f"Metadata context: {metadata_context}")
 
         # 3. Get reference data for context (if available)
-        reference_context = ""
+        ref_repo = ReferenceRepository(db.connection)
+        reference_content = ref_repo.get_reference_content(video_id)
+
+        logger.info(f"Reference content: {reference_content}")
+
+        # Build reference context for prompt
+        if reference_content:
+            reference_context = f"""
+참고 정보:
+{reference_content}
+
+위 참고 정보를 활용하여 더 정확하고 상세한 설명을 제공하세요.
+"""
+        else:
+            reference_context = ""
 
         # 4. Get image file path (if provided)
         image_path = None
@@ -232,6 +249,15 @@ async def explain_subtitle(
 
     except HTTPException:
         raise
+    except google_exceptions.DeadlineExceeded as e:
+        logger.error(
+            f"Gemini API timeout: video_id={video_id}, error={str(e)}",
+            exc_info=True
+        )
+        raise HTTPException(
+            status_code=504,  # Gateway Timeout
+            detail="AI response timeout. Please try again."
+        )
     except Exception as e:
         logger.error(
             f"Failed to generate explanation: video_id={video_id}, error={str(e)}",
