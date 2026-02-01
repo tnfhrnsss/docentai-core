@@ -1,0 +1,39 @@
+# Database Configuration
+# SQLite 설정 파일
+
+database:
+  # SQLite 데이터베이스 파일 경로
+  path: "./data/docent.db"
+
+  # SQL 쿼리 로깅 (개발 시 true, 프로덕션 false)
+  echo: false
+
+  # Connection pool 설정 (SQLite는 단일 연결이지만 설정 유지)
+  pool_size: 5
+  max_overflow: 10
+
+  # SQLite specific settings
+  check_same_thread: false  # FastAPI async 작업을 위해 false
+
+  # Timeout settings (seconds)
+  timeout: 30
+
+  # Journal mode (WAL is recommended for concurrent reads)
+  journal_mode: "WAL"
+
+  # Foreign key constraints
+  foreign_keys: true
+
+# 백업 설정
+backup:
+  enabled: true
+  path: "./backups"
+  # 백업 보관 기간 (일)
+  retention_days: 30
+  # 자동 백업 주기 (시간)
+  interval_hours: 24
+
+# 마이그레이션 설정
+migration:
+  auto_upgrade: false
+  backup_before_migration: true

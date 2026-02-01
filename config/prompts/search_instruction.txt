@@ -1,0 +1,8 @@
+Perform a web search and list the titles and URLs of relevant results.
+Do not make inferences or summaries.
+Respond only in the following format:
+
+1. [Title]
+URL: [Link]
+2. [Title]
+URL: [Link]
