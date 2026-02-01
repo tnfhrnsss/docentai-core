@@ -2,8 +2,9 @@
 
 # DocentAI Core - AI Backend
 
-**AI-Powered Subtitle Explanation Engine**
-*Powered by Google Gemini & Built for Gemini 3 Hackathon*
+**AI-Powered Subtitle Explanation Engine**\
+*Like a museum docent guiding you through art, \
+DocentAI is your AI guide through Netflix narratives — understanding context and explaining clearly*
 
 ![DocentAI Backend](assets/icons/favicon-48x48.png)
 
@@ -12,6 +13,8 @@
 [![Gemini](https://img.shields.io/badge/Powered_by-Google_Gemini-4285F4?style=for-the-badge&logo=google)](https://ai.google.dev/)
 [![Python](https://img.shields.io/badge/Python-3.9+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+
+🌐 **[Visit Landing Page →](https://tnfhrnsss.github.io/docentai)**
 
 [🚀 Quick Start](#-quick-start) • [🤖 Features](#-key-features) • [📊 API Docs](API_GUIDE.md) • [☁️ Deployment](#️-deployment)
 
