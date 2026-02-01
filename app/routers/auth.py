@@ -48,7 +48,7 @@ async def issue_token(
         existing_session = session_repo.get_valid_session_by_profile_id(x_profile_id)
 
         if existing_session:
-            # Reuse existing token and extend expiration
+            # Reuse existing session but create NEW token with updated expiration
             session_id = existing_session["session_id"]
 
             # IP 변경 감지 (모니터링 목적)
@@ -64,24 +64,29 @@ async def issue_token(
                     f"current_ip={client_ip}"
                 )
 
+            # Create new token with extended expiration
+            # Note: We generate a new JWT token to update the exp claim
+            # Otherwise, the old token's exp remains outdated even if DB expires_at is extended
+            # IMPORTANT: Reuse the existing session_id to maintain consistency
+            token_data = create_access_token(x_profile_id, session_id=session_id)
+
+            # Update session with new token (same session_id, new token with fresh exp)
+            session_repo.update_token(session_id, token_data["token"])
             session_repo.extend_expiration(
                 session_id, extend_hours=settings.JWT_EXPIRATION_DAYS * 24
             )
 
-            # Get updated session
-            updated_session = session_repo.get_by_session_id(session_id)
-
-            # Log token reuse
+            # Log token refresh
             logger.info(
-                f"Token reused: profile_id={x_profile_id}, "
+                f"Token refreshed: profile_id={x_profile_id}, "
                 f"session_id={session_id}, client_ip={client_ip}"
             )
 
             return {
                 "success": True,
-                "token": updated_session["token"],
-                "expiresAt": updated_session["expires_at"],
-                "sessionId": updated_session["session_id"],
+                "token": token_data["token"],  # Return NEW token with updated exp
+                "expiresAt": token_data["expires_at"],
+                "sessionId": session_id,
                 "reused": True,
             }
 

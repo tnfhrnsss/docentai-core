@@ -11,12 +11,13 @@ from database import get_db
 from database.repositories import SessionRepository
 
 
-def create_access_token(profile_id: str) -> Dict[str, Any]:
+def create_access_token(profile_id: str, session_id: Optional[str] = None) -> Dict[str, Any]:
     """
     Create JWT access token for a profile
 
     Args:
         profile_id: User's profile identifier (e.g., MDX_PROFILEID)
+        session_id: Optional session ID to reuse. If None, generates a new one.
 
     Returns:
         Dict containing:
@@ -26,8 +27,9 @@ def create_access_token(profile_id: str) -> Dict[str, Any]:
     """
     settings = get_settings()
 
-    # Generate unique session ID
-    session_id = str(uuid.uuid4())
+    # Generate unique session ID or reuse existing one
+    if session_id is None:
+        session_id = str(uuid.uuid4())
 
     # Calculate expiration time
     expires_delta = timedelta(days=settings.JWT_EXPIRATION_DAYS)
