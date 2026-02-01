@@ -188,26 +188,21 @@ curl -X POST http://localhost:8001/api/videos \
 curl -X POST http://localhost:8001/api/explanations/videos/81498621 \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer {token}" \
-  -d '{
-    "selectedText": "그때 그 사람이었어",
+  -d "{
+    "selectedText": "Okay, time for our pre-game ramyeon!",
     "timestamp": 992.5,
-    "language": "ko",
+    "language": "en",
     "context": [
       {
-        "text": "안녕하세요",
+        "text": "Okay, time for our pre-game ramyeon!",
         "timestamp": 990.0,
-        "nonVerbalCues": ["[밝은 음악]"]
-      },
-      {
-        "text": "만나서 반갑습니다",
-        "timestamp": 991.0,
-        "nonVerbalCues": []
+        "nonVerbalCues": [\"[밝은 음악]\"]
       }
     ],
     "currentSubtitle": {
-      "text": "그때 그 사람이었어",
-      "timestamp": 992.5,
-      "nonVerbalCues": ["[긴장감 있는 음악]", "(놀란 표정)"]
+      "text": "Happy fans, happy Honmoon!", 
+      "timestamp": "244.354693", 
+      "nonVerbalCues": []
     },
     "imageId": "img_abc123",
     "title": "k-pop-demon-hunters",
