@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DocentAI Core – System Architecture</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #f0f2f5;
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 40px 20px;
+  }
+
+  .page {
+    width: 960px;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 4px 40px rgba(0,0,0,0.07);
+    padding: 44px 48px 48px;
+    position: relative;
+  }
+
+  /* ─── TITLE ─── */
+  .title-area {
+    text-align: center;
+    margin-bottom: 36px;
+  }
+  .title-area h1 {
+    font-size: 22px;
+    font-weight: 700;
+    color: #1a1a2e;
+    letter-spacing: -0.3px;
+  }
+  .title-area .sub {
+    font-size: 12px;
+    color: #8a8fa3;
+    margin-top: 4px;
+    font-weight: 500;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+  }
+
+  /* ─── LAYER BANDS ─── */
+  .layer {
+    border-radius: 14px;
+    padding: 18px 20px 20px;
+    margin-bottom: 0;
+    position: relative;
+  }
+  .layer-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.6px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .layer-label .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+  }
+
+  /* Colour themes */
+  .layer--client   { background: #eef2ff; }
+  .layer--client .layer-label { color: #4f46e5; }
+  .layer--client .layer-label .dot { background: #4f46e5; }
+
+  .layer--gateway  { background: #fef3c7; }
+  .layer--gateway .layer-label { color: #b45309; }
+  .layer--gateway .layer-label .dot { background: #b45309; }
+
+  .layer--app      { background: #ecfdf5; }
+  .layer--app .layer-label { color: #059669; }
+  .layer--app .layer-label .dot { background: #059669; }
+
+  .layer--data     { background: #f3e8ff; }
+  .layer--data .layer-label { color: #7c3aed; }
+  .layer--data .layer-label .dot { background: #7c3aed; }
+
+  /* ─── ARROW CONNECTOR ─── */
+  .arrow {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 34px;
+  }
+  .arrow svg { width: 24px; height: 34px; }
+
+  /* ─── GENERIC ROW / CARDS ─── */
+  .row { display: flex; gap: 12px; align-items: stretch; }
+  .row--center { justify-content: center; }
+
+  .card {
+    background: #fff;
+    border: 1px solid rgba(0,0,0,0.08);
+    border-radius: 10px;
+    padding: 14px 18px;
+    flex: 1;
+    min-width: 0;
+  }
+  .card--sm { flex: 0 0 auto; }
+  .card-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: #1a1a2e;
+    margin-bottom: 6px;
+  }
+  .card-sub {
+    font-size: 10.5px;
+    color: #6b7280;
+    line-height: 1.55;
+  }
+  .card-sub .chip {
+    display: inline-block;
+    background: #f3f4f6;
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 9.5px;
+    color: #4b5563;
+    margin: 1px 1px 1px 0;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* ─── CLIENT ROW ─── */
+  .client-card { text-align: center; }
+  .client-card .icon { font-size: 22px; margin-bottom: 4px; }
+
+  /* ─── GATEWAY PIPELINE ─── */
+  .pipeline {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    background: #fff;
+    border: 1px solid rgba(0,0,0,0.08);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .pipe-step {
+    flex: 1;
+    padding: 10px 14px;
+    text-align: center;
+    font-size: 10.5px;
+    font-weight: 600;
+    color: #92400e;
+    background: #fef9c3;
+    border-right: 1px solid #fde68a;
+  }
+  .pipe-step:last-child { border-right: none; }
+  .pipe-arrow {
+    color: #b45309;
+    font-size: 14px;
+    padding: 0 2px;
+    background: #fef9c3;
+    border-right: 1px solid #fde68a;
+  }
+
+  /* ─── APP LAYER INTERNALS ─── */
+  .app-inner {
+    display: flex;
+    gap: 12px;
+  }
+  .app-main {
+    flex: 1;
+    background: #d1fae5;
+    border-radius: 10px;
+    padding: 16px;
+  }
+  .app-main-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: #065f46;
+    margin-bottom: 10px;
+    letter-spacing: 0.4px;
+  }
+  .app-sidebar {
+    width: 195px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  /* sub-cards inside app */
+  .sub-card {
+    background: #fff;
+    border: 1px solid #a7f3d0;
+    border-radius: 8px;
+    padding: 11px 14px;
+  }
+  .sub-card-title {
+    font-size: 10.5px;
+    font-weight: 700;
+    color: #065f46;
+    margin-bottom: 5px;
+  }
+  .sub-card-body {
+    font-size: 9.8px;
+    color: #6b7280;
+    line-height: 1.6;
+  }
+  .sub-card-body .highlight {
+    color: #047857;
+    font-weight: 600;
+  }
+
+  /* Routers sidebar card */
+  .router-card {
+    background: #fff;
+    border: 1px solid #a7f3d0;
+    border-radius: 8px;
+    padding: 12px 14px;
+    flex: 1;
+  }
+  .router-card-title {
+    font-size: 10.5px;
+    font-weight: 700;
+    color: #065f46;
+    margin-bottom: 7px;
+  }
+  .router-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px 10px;
+  }
+  .router-item {
+    font-size: 9.8px;
+    color: #6b7280;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .router-item::before {
+    content: '';
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: #10b981;
+    flex-shrink: 0;
+  }
+
+  /* ─── EXTERNAL + DATA side-by-side ─── */
+  .bottom-row {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  /* External services box (left, floated) */
+  .ext-box {
+    width: 210px;
+    flex-shrink: 0;
+  }
+  .ext-card {
+    background: #dbeafe;
+    border: 1px solid #93c5fd;
+    border-radius: 10px;
+    padding: 14px 16px;
+  }
+  .ext-card-title {
+    font-size: 10.5px;
+    font-weight: 700;
+    color: #1e40af;
+    margin-bottom: 6px;
+  }
+  .ext-card-sub {
+    font-size: 9.8px;
+    color: #1d4ed8;
+    line-height: 1.6;
+  }
+  .ext-card-sub .chip {
+    display: inline-block;
+    background: rgba(255,255,255,0.6);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 9px;
+    color: #1e3a8a;
+    margin: 1px 1px 1px 0;
+  }
+
+  /* Arrow from external to app */
+  .ext-arrow-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 8px;
+  }
+
+  /* ─── DATA LAYER INTERNALS ─── */
+  .data-row {
+    display: flex;
+    gap: 12px;
+  }
+  .data-card {
+    flex: 1;
+    background: #fff;
+    border: 1px solid rgba(0,0,0,0.08);
+    border-radius: 10px;
+    padding: 14px 16px;
+  }
+  .data-card-title {
+    font-size: 11px;
+    font-weight: 600;
+    color: #1a1a2e;
+    margin-bottom: 7px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .data-card-title .icon { font-size: 14px; }
+  .data-card-body { font-size: 9.8px; color: #6b7280; line-height: 1.7; }
+  .data-card-body .chip {
+    display: inline-block;
+    background: #ede9fe;
+    border-radius: 4px;
+    padding: 1.5px 7px;
+    font-size: 9px;
+    color: #5b21b6;
+    margin: 1.5px 1.5px 1.5px 0;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* ─── LAYOUT HELPERS ─── */
+  .gap-sm { margin-bottom: 10px; }
+  .gap-md { margin-bottom: 16px; }
+  .mt-sm { margin-top: 8px; }
+
+  /* ─── HTTPS label ─── */
+  .https-label {
+    font-size: 9px;
+    font-weight: 700;
+    color: #6366f1;
+    letter-spacing: 1px;
+    text-align: center;
+    margin-bottom: -2px;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- TITLE -->
+  <div class="title-area">
+    <h1>DocentAI Core</h1>
+    <div class="sub">System Architecture Overview</div>
+  </div>
+
+  <!-- ════════ CLIENT LAYER ════════ -->
+  <div class="layer layer--client">
+    <div class="layer-label"><span class="dot"></span> Client Layer</div>
+    <div class="row row--center">
+      <div class="card card--sm client-card" style="width:220px">
+        <div class="card-title">🌐 Chrome Extension</div>
+        <div class="card-sub" style="color:#4f46e5; font-weight:500">(docentai-ui)</div>
+      </div>
+      <div class="card card--sm client-card" style="width:220px">
+        <div class="card-title">📺 Web Browser</div>
+        <div class="card-sub" style="color:#4f46e5; font-weight:500">Netflix / YouTube</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ARROW + HTTPS -->
+  <div class="https-label">HTTPS</div>
+  <div class="arrow">
+    <svg viewBox="0 0 24 34" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <line x1="12" y1="0" x2="12" y2="26" stroke="#9ca3af" stroke-width="2"/>
+      <path d="M6 22 L12 30 L18 22" fill="none" stroke="#9ca3af" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </div>
+
+  <!-- ════════ API GATEWAY ════════ -->
+  <div class="layer layer--gateway">
+    <div class="layer-label"><span class="dot"></span> API Gateway</div>
+    <div class="pipeline">
+      <div class="pipe-step">CORS</div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-step">Auth Middleware</div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-step">Logging Middleware</div>
+    </div>
+  </div>
+
+  <!-- ARROW -->
+  <div class="arrow">
+    <svg viewBox="0 0 24 34" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <line x1="12" y1="0" x2="12" y2="26" stroke="#9ca3af" stroke-width="2"/>
+      <path d="M6 22 L12 30 L18 22" fill="none" stroke="#9ca3af" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </div>
+
+  <!-- ════════ APPLICATION LAYER ════════ -->
+  <div class="layer layer--app">
+    <div class="layer-label"><span class="dot"></span> Application Layer</div>
+
+    <div class="app-inner">
+      <!-- Main green block: FastAPI Application -->
+      <div class="app-main">
+        <!-- API Routers row -->
+        <div class="sub-card gap-sm">
+          <div class="sub-card-title">APIs</div>
+          <div class="router-grid">
+            <div class="router-item">Explanations</div>
+            <div class="router-item">Auth</div>
+            <div class="router-item">Videos</div>
+            <div class="router-item">Images</div>
+            <div class="router-item">Settings</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sidebar: API Routers detail + External Services -->
+      <div class="app-sidebar">
+        <!-- External Services -->
+        <div class="ext-card">
+          <div class="ext-card-title">🔗 External Services</div>
+          <div style="font-size:10px; font-weight:600; color:#1e40af; margin-bottom:4px">Google Gemini API</div>
+          <div class="ext-card-sub">
+            <span class="chip">Multimodal</span>
+            <span class="chip">Search Grounding</span>
+            <span class="chip">Large Context</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ARROW -->
+  <div class="arrow">
+    <svg viewBox="0 0 24 34" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <line x1="12" y1="0" x2="12" y2="26" stroke="#9ca3af" stroke-width="2"/>
+      <path d="M6 22 L12 30 L18 22" fill="none" stroke="#9ca3af" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </div>
+
+  <!-- ════════ DATA LAYER ════════ -->
+  <div class="layer layer--data">
+    <div class="layer-label"><span class="dot"></span> Data Layer</div>
+    <div class="data-row">
+
+      <!-- SQLite Database -->
+      <div class="data-card">
+        <div class="data-card-title"><span class="icon">🗄️</span> SQLite Database</div>
+        <div class="data-card-body">
+          <span class="chip">da_videos</span>
+          <span class="chip">da_videos_reference</span>
+          <span class="chip">da_session</span>
+          <span class="chip">da_request</span>
+          <span class="chip">da_images</span>
+          <span class="chip">da_settings</span>
+        </div>
+      </div>
+
+      <!-- File Storage -->
+      <div class="data-card" style="flex: 0 0 auto; width: 195px;">
+        <div class="data-card-title"><span class="icon">📁</span> File Storage</div>
+        <div class="data-card-body">
+          <span class="chip">Screenshots</span>
+        </div>
+      </div>
+
+      <!-- Application Logs -->
+      <div class="data-card" style="flex: 0 0 auto; width: 185px;">
+        <div class="data-card-title"><span class="icon">📝</span> App Logs</div>
+        <div class="data-card-body">
+          <span class="chip">Request Logs</span>
+          <span class="chip">Error Logs</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div><!-- /page -->
+</body>
+</html>

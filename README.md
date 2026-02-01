@@ -5,7 +5,6 @@
 **AI-Powered Subtitle Explanation Engine**
 *Powered by Google Gemini & Built for Gemini 3 Hackathon*
 
-<!-- TODO: Add project logo/icon image -->
 ![DocentAI Backend](assets/icons/favicon-48x48.png)
 
 [![Live API](https://img.shields.io/badge/API-Live_on_GCP-success?style=for-the-badge)](https://docentai-api-1064006289042.asia-northeast3.run.app/health)
@@ -73,20 +72,15 @@ DocentAI is **NOT a language learning tool**. It's a **narrative comprehension t
 
 ---
 
-## 🤖 Key Features
+## Key Features
 
 ### 1. **Search Grounding**
 
 Built-in web search powered by Gemini API - no separate Search API needed!
 
-[Learn more about Search Grounding →](GEMINI_INTEGRATION.md#search-grounding-feature)
-
 ### 2. **2-Step Architecture**
 
 Smart reference caching for optimal performance and cost.
-
-<!-- TODO: Replace with architecture diagram image -->
-<!-- ![2-Step Architecture](assets/architecture-2step.png) -->
 
 ```
 STEP 1: Video Registration
@@ -98,8 +92,6 @@ STEP 2: Generate Explanations (many times)
   └─> Fast & cost-effective
 ```
 
-[See detailed architecture →](ARCHITECTURE.md)
-
 ### 3. **Multimodal Analysis**
 
 Understand beyond just text:
@@ -110,7 +102,8 @@ Understand beyond just text:
 - **Actions**: (Character movements), (Facial expressions)
 - **External**: Search Grounding results
 
-[Multimodal integration details →](GEMINI_INTEGRATION.md#multimodal-analysis)
+[See detailed architecture →](ARCHITECTURE.md)
+
 
 ---
 
@@ -252,14 +245,13 @@ curl http://localhost:8001/health
 | `/health` | GET | Health check |
 
 
-**📖 API Documentation:** [API_GUIDE.md](API_GUIDE.md)
+** API Documentation:** [API_GUIDE.md](API_GUIDE.md)
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
-<!-- TODO: Replace with high-level architecture diagram -->
-<!-- ![System Architecture](assets/architecture-overview.png) -->
+![System Architecture](assets/arch-overview.png)
 
 ### Component Overview
 
@@ -280,17 +272,15 @@ docentai-core/
 └── logs/                  # Application logs
 ```
 
-**🔗 Detailed Architecture:** [ARCHITECTURE.md](ARCHITECTURE.md)
+** Detailed Architecture:** [ARCHITECTURE.md](ARCHITECTURE.md)
 
 ---
 
-## ☁️ Deployment
+## Deployment
 
 ### Google Cloud Run (Production)
 
 **Current Status:** ✅ Live at `https://docentai-api-1064006289042.asia-northeast3.run.app`
-
-[GCP Deployment Guide →](GCP_DEPLOYMENT_GUIDE.md)
 
 ### Local Server
 
@@ -312,11 +302,9 @@ cp .env.example .env
 python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8001
 ```
 
-[Full Deployment Guide →](DEPLOYMENT.md)
-
 ---
 
-## 🗄️ Database
+## Database
 
 DocentAI uses **SQLite** for production-ready, serverless data storage.
 
@@ -329,19 +317,18 @@ DocentAI uses **SQLite** for production-ready, serverless data storage.
 - `images` - Uploaded screenshots
 - `settings` - App configuration
 
-**📖 Database Schema:** [DATABASE.md](DATABASE.md)
+** Database Schema:** [DATABASE.md](DATABASE.md)
 
 ---
 
-## 🔒 Security & Privacy
+## Security & Privacy
 
 ### No Personal Data Collection
 
-**We do NOT collect:**
+**do NOT collect:**
 - ❌ User names or emails
 - ❌ Browsing history
 - ❌ IP addresses (except temporary logs)
-- ❌ Any personally identifiable information (PII)
 
 ### Security Features
 
@@ -352,46 +339,40 @@ DocentAI uses **SQLite** for production-ready, serverless data storage.
 
 ---
 
-## 📚 Documentation
+## Documentation
 
 ### Quick Links
 
-- [**ARCHITECTURE.md**](ARCHITECTURE.md) - System architecture with diagrams
-- [**GEMINI_INTEGRATION.md**](GEMINI_INTEGRATION.md) - Gemini AI & Search Grounding
-- [**API_GUIDE.md**](API_GUIDE.md) - Complete API reference
-- [**DATABASE.md**](DATABASE.md) - Database schema
-- [**DEPLOYMENT.md**](DEPLOYMENT.md) - Deployment guide
-- [**GCP_DEPLOYMENT_GUIDE.md**](GCP_DEPLOYMENT_GUIDE.md) - GCP setup
-- [**DEBUG_LOGGING.md**](DEBUG_LOGGING.md) - Debug & logging
+- [**ARCHITECTURE.md**](ARCHITECTURE.md)
+- [**API_GUIDE.md**](API_GUIDE.md)
+- [**DATABASE.md**](DATABASE.md)
 
 ---
 
-## 🏆 Built for Gemini 3 Hackathon
-
-### Key Gemini Features Used
+## Key Gemini Features Used
 
 ```
-✅ Search Grounding
+1. Search Grounding
    - Built-in web search
    - Automatic source attribution
    - No separate API needed
 
-✅ Multimodal Analysis
+2. Multimodal Analysis
    - Text + Image understanding
    - Unified processing
 
-✅ Large Context Window
+3. Large Context Window
    - Entire episode context
    - Conversation history
 
-✅ Cost-Effective
+4. Cost-Effective
    - 2-step architecture
    - Smart caching
 ```
 
 ---
 
-## 🔗 Related Repositories
+## Related Repositories
 
 | Repository | Description | Role |
 |------------|-------------|------|
@@ -400,7 +381,7 @@ DocentAI uses **SQLite** for production-ready, serverless data storage.
 
 ---
 
-## 📄 License
+## License
 
 MIT License - See [LICENSE](LICENSE) for details
 
@@ -414,7 +395,6 @@ MIT License - See [LICENSE](LICENSE) for details
 **👉 [Visit docentai →](https://github.com/tnfhrnsss/docentai)**
 
 ---
-**⭐ Star this repo if you find it helpful!**
 
 [⬆ Back to Top](#docentai-core---ai-backend)
 
