@@ -16,7 +16,7 @@ DocentAI is your AI guide through Netflix narratives — understanding context a
 
 🌐 **[Visit Landing Page →](https://tnfhrnsss.github.io/docentai)**
 
-[🚀 Quick Start](#-quick-start) • [🤖 Features](#-key-features) • [📊 API Docs](API_GUIDE.md) • [☁️ Deployment](#️-deployment)
+[🚀 Quick Start](#-quick-start) • [🤖 Features](#Key-Features) • [📊 API Docs](API_GUIDE.md) • [☁️ Deployment](#Deployment)
 
 </div>
 
@@ -107,6 +107,15 @@ Understand beyond just text:
 
 [See detailed architecture →](ARCHITECTURE.md)
 
+---
+
+## 🎬 Demo
+
+See DocentAI in action:
+
+[![DocentAI Demo](https://img.youtube.com/vi/BUbfO1P8-Bs/maxresdefault.jpg)](https://youtu.be/BUbfO1P8-Bs)
+
+**[▶️ Watch Demo Video](https://youtu.be/BUbfO1P8-Bs)**
 
 ---
 
