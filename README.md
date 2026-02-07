@@ -56,7 +56,7 @@ DocentAI is **NOT a language learning tool**. It's a **narrative comprehension t
 - **JWT Authentication**
 - **Multimodal Analysis** (Text + Image)
 - **2-Step Architecture** (Cost optimized)
-- ☁**GCP Cloud Run** (Serverless deployment)
+- **GCP Cloud Run** (Serverless deployment)
 
 </td>
 <td width="50%">
